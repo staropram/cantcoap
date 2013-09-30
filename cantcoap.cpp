@@ -45,6 +45,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COAP_HDR_SIZE 4
 #define COAP_OPTION_HDR_BYTE 1
 
+#ifdef DEBUG
+	#define INFO(...) printf(__VA_ARGS__); printf("\r\n")
+	#define DBG(...) fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n")
+	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
+#else
+	#define INFO(...) {};
+	#define DBG(...) {};
+	#define DBGX(...) {};
+#endif
+
 /// Constructor
 CoapPDU::CoapPDU() {
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
@@ -62,6 +72,11 @@ CoapPDU::CoapPDU() {
 CoapPDU::~CoapPDU() {
 	free(_pdu);
 }
+
+uint8_t* CoapPDU::getPDU() {
+	return _pdu;
+}
+
 
 /**
  * Sets the CoAP version.

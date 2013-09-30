@@ -1,9 +1,15 @@
-CPPFLAGS=-Wall -lcunit
-default: test
+CC="gcc"
+CPPFLAGS=-Wall -lcunit -std=c99
+default: test client
 
-test: cantcoap.o
+test: cantcoap.o nethelper.o
 
-cantcoap: cantcoap.h
+COAP_OBJS=cantcoap.h cantcoap.cpp
+
+cantcoap: $(COAP_OBJS)
+
+client: cantcoap.o nethelper.o client.cpp
+
 
 clean:
 	rm *.o;

@@ -6,16 +6,6 @@
 	// 11 Reset
 
 
-#ifdef DEBUG
-	#define INFO(...) printf(__VA_ARGS__); printf("\r\n")
-	#define DBG(...) fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n")
-	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
-#else
-	#define INFO(...) {};
-	#define DBG(...) {};
-	#define DBGX(...) {};
-#endif
-
 /*
 #define COAP_CODE_EMPTY 0x00
 
@@ -167,6 +157,7 @@ class CoapPDU {
 		void printPDUAsCArray();
 
 		int getPDULength();
+		uint8_t* getPDU();
 
 	public:
 		uint8_t *_pdu;

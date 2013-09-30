@@ -96,28 +96,20 @@ void testOptionInsertion(void) {
 	pdu->setCode(CoapPDU::COAP_CHANGED);
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestA,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\x55\x55\x55");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestB,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\xff\xff\xff");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestC,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(7,3,(uint8_t*)"\xf7\xf7\xf7");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestD,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(200,3,(uint8_t*)"\x01\x02\x03");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestE,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(190,3,(uint8_t*)"\x03\x02\x01");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestF,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(300,3,(uint8_t*)"\x01\x02\x03");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestG,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(195,3,(uint8_t*)"\x03\x02\x01");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestH,pdu->_pdu,pdu->getPDULength());
 	pdu->addOption(1950,3,(uint8_t*)"\x03\x02\x01");
-	printf("DONE\r\n"); pdu->printBin();
 	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestI,pdu->_pdu,pdu->getPDULength());
 	delete pdu;
 }
