@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	// 10 Acknowledgement
 	// 11 Reset
 
-//#define DEBUG 1
+#define DEBUG 1
 
 // token length, 4 bits
 // length of token in bytes (only 0 to 8 bytes allowed)
@@ -67,6 +67,22 @@ CoapPDU::CoapPDU() {
 	// be to re-arrange memory every time an option is added out-of-order
 	// this would be a ballache however, so for now, we'll just dump this to
 	// a PDU at the end
+}
+
+CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
+	// XXX should we copy this ?
+	_pdu = pdu;
+	_pduLength = pduLength;
+}
+
+// validates a PDU
+int CoapPDU::isValid() {
+	if(_pduLength<4) {
+		return 0;
+	}
+
+
+	return 1;
 }
 
 CoapPDU::~CoapPDU() {

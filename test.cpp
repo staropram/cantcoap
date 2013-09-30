@@ -116,7 +116,6 @@ void testOptionInsertion(void) {
 
 void testHeaderFirstByteConstruction(void) {
 	CoapPDU *pdu = new CoapPDU();
-	int p = 0;
 	for(int pduVersion=0; pduVersion<4; pduVersion++) {
 		for(int pduTypeIndex=0; pduTypeIndex<4; pduTypeIndex++) {
 			for(int tokenLength=0; tokenLength<9; tokenLength++) {

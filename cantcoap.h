@@ -118,7 +118,10 @@ class CoapPDU {
 
 		// constructor and destructor
 		CoapPDU();
+		CoapPDU(uint8_t *pdu, int pduLength);
 		~CoapPDU();
+
+		int isValid();
 
 		// version
 		int setVersion(uint8_t version);
