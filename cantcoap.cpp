@@ -98,6 +98,7 @@ int CoapPDU::isValid() {
 	// check code
 
 
+
 	return 1;
 }
 

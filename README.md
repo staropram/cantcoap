@@ -10,6 +10,8 @@ Dependencies:
 
 * CUnit 
 
+See: http://cunit.sourceforge.net/
+
 This is a testing framework for c. 
 
 You need libcunit1 and libcunit1-dev
