@@ -46,6 +46,19 @@
 
 //#define COAP_CODE.
 
+#define INFO(...) printf(__VA_ARGS__); printf("\r\n");
+#define ERR(...) printf(__VA_ARGS__); printf("\r\n");
+
+#ifdef DEBUG
+	#define DBG(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n");
+	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
+	#define DBGLX(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__);
+#else
+	#define DBG(...) {};
+	#define DBGX(...) {};
+	#define DBGLX(...) {};
+#endif
+
 
 // token length, 4 bits
 // length of token in bytes (only 0 to 8 bytes allowed)
@@ -118,7 +131,10 @@ class CoapPDU {
 
 		// constructor and destructor
 		CoapPDU();
+		CoapPDU(uint8_t *pdu, int pduLength);
 		~CoapPDU();
+
+		int isValid();
 
 		// version
 		int setVersion(uint8_t version);

@@ -3,6 +3,22 @@ cantcoap
 
 CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.
 
+Compilation
+-----------
+
+Dependencies:
+
+* CUnit 
+
+This is a testing framework for c. 
+
+You need libcunit1 and libcunit1-dev
+
+Then just type make.
+
+Long description
+----------------
+
 This is a CoAP implementation with a focus on simplicity. The library only provides PDU construction and de-construction.
 The user is expected to deal with retransmissions, timeouts, and message ID matching themselves. This isn’t as arduous as it sounds and makes a lot more sense on a constrained device.
 Imagine for example a simple microcontroller sensor that only reports readings once every 15 minutes, and only sends a few packets each time. Do you really need a complicated framework to deal with acknowledgements and re-transmissions?

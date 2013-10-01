@@ -30,8 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	// 10 Acknowledgement
 	// 11 Reset
 
-//#define DEBUG 1
-
 // token length, 4 bits
 // length of token in bytes (only 0 to 8 bytes allowed)
 #include <stdio.h>
@@ -45,16 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COAP_HDR_SIZE 4
 #define COAP_OPTION_HDR_BYTE 1
 
-#ifdef DEBUG
-	#define INFO(...) printf(__VA_ARGS__); printf("\r\n")
-	#define DBG(...) fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n")
-	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
-#else
-	#define INFO(...) {};
-	#define DBG(...) {};
-	#define DBGX(...) {};
-#endif
-
 /// Constructor
 CoapPDU::CoapPDU() {
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
@@ -67,6 +55,22 @@ CoapPDU::CoapPDU() {
 	// be to re-arrange memory every time an option is added out-of-order
 	// this would be a ballache however, so for now, we'll just dump this to
 	// a PDU at the end
+}
+
+CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
+	// XXX should we copy this ?
+	_pdu = pdu;
+	_pduLength = pduLength;
+}
+
+// validates a PDU
+int CoapPDU::isValid() {
+	if(_pduLength<4) {
+		return 0;
+	}
+
+
+	return 1;
 }
 
 CoapPDU::~CoapPDU() {
@@ -736,9 +740,9 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 
 
 	// now insert the new option into the gap
-	DBGX("Inserting new option...");
+	DBGLX("Inserting new option...");
 	insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
-	DBG("done");
+	DBGX("done\r\n");
 	#ifdef DEBUG
 	printBin();
 	#endif

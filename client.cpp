@@ -14,19 +14,6 @@
 #include "nethelper.h"
 #include "cantcoap.h"
 
-#define INFO(...) printf(__VA_ARGS__); printf("\r\n")
-#define ERR(...) printf(__VA_ARGS__); printf("\r\n")
-
-#define DEBUG 1
-
-#ifdef DEBUG
-	#define DBG(...) fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n")
-	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
-#else
-	#define DBG(...) {};
-	#define DBGX(...) {};
-#endif
-
 void failGracefully(int x) {
 	exit(x);
 }
@@ -92,8 +79,8 @@ int main(int argc, char **argv) {
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_GET);
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	pdu->addOption(11,3,(uint8_t*)"oma");
-	pdu->addOption(11,8,(uint8_t*)"firmware");
+	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,3,(uint8_t*)"oma");
+	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,8,(uint8_t*)"firmware");
 
 	// send packet to self
 	ret = send(sockfd,pdu->getPDU(),pdu->getPDULength(),0);
@@ -111,16 +98,14 @@ int main(int argc, char **argv) {
 		INFO("Error receiving data");
 		return -1;
 	}
-	buffer[ret] = 0x00;
-	INFO("Received %d bytes: \"%s\"",ret,buffer);
 
 	// validate packet
-	CoapPDU *recvPDU = new CoapPDU(buffer);
-	if(recvPDU==NULL) {
+	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
+	if(recvPDU->isValid()!=1) {
 		INFO("Malformed CoAP packet");
 		return -1;
 	}
-	
+	INFO("Valid CoAP PDU received");
 	
 	return 0;
 }
