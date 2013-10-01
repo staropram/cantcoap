@@ -46,6 +46,7 @@ CoapPDU::CoapPDU() {
 	_pduLength = 4;
 	_numOptions = 0;
 	_payloadPointer = NULL;
+	_constructedFromBuffer = 0;
 
 	// options
 	// XXX it would have been nice to use something like UDP_CORK or MSG_MORE 
@@ -60,6 +61,7 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
 	_pdu = pdu;
 	_pduLength = pduLength;
 	_payloadPointer = NULL;
+	_constructedFromBuffer = 1;
 }
 
 // validates a PDU
@@ -218,7 +220,9 @@ int CoapPDU::isValid() {
 }
 
 CoapPDU::~CoapPDU() {
-	free(_pdu);
+	if(!_constructedFromBuffer) {
+		free(_pdu);
+	}
 }
 
 uint8_t* CoapPDU::getPDUPointer() {

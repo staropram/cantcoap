@@ -215,5 +215,6 @@ class CoapPDU {
 		// meta data
 		int _numOptions;
 		int _optionStart;
+		int _constructedFromBuffer;
 		uint16_t _maxAddedOptionNumber;
 };
