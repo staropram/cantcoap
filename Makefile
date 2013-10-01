@@ -1,5 +1,5 @@
 CC="gcc"
-CPPFLAGS=-Wall -lcunit -std=c99
+CPPFLAGS=-Wall -lcunit -std=c99 #-DDEBUG
 default: test client
 
 test: cantcoap.o nethelper.o

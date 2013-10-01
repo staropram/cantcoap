@@ -9,9 +9,12 @@ Compilation
 Dependencies:
 
 * CUnit 
-	This is a testing framework for c. 
 
-Just type make
+This is a testing framework for c. 
+
+You need libcunit1 and libcunit1-dev
+
+Then just type make.
 
 Long description
 ----------------

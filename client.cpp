@@ -14,19 +14,6 @@
 #include "nethelper.h"
 #include "cantcoap.h"
 
-#define INFO(...) printf(__VA_ARGS__); printf("\r\n")
-#define ERR(...) printf(__VA_ARGS__); printf("\r\n")
-
-#define DEBUG 1
-
-#ifdef DEBUG
-	#define DBG(...) fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n")
-	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
-#else
-	#define DBG(...) {};
-	#define DBGX(...) {};
-#endif
-
 void failGracefully(int x) {
 	exit(x);
 }
