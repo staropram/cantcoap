@@ -1,5 +1,8 @@
 CC="gcc"
-CPPFLAGS=-Wall -lcunit -std=c99 #-DDEBUG
+LIBS=-L/usr/local/lib
+INCLUDE=-I/usr/local/include
+CPPFLAGS=-Wall -lcunit -std=c99 $(LIBS) $(INCLUDE) #-DDEBUG
+CFLAGS=-Wall -lcunit -std=c99 $(LIBS) $(INCLUDE)
 default: test client
 
 test: cantcoap.o nethelper.o
