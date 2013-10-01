@@ -45,6 +45,7 @@ CoapPDU::CoapPDU() {
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
 	_pduLength = 4;
 	_numOptions = 0;
+	_payloadPointer = NULL;
 
 	// options
 	// XXX it would have been nice to use something like UDP_CORK or MSG_MORE 
@@ -58,6 +59,7 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
 	// XXX should we copy this ?
 	_pdu = pdu;
 	_pduLength = pduLength;
+	_payloadPointer = NULL;
 }
 
 // validates a PDU
@@ -95,8 +97,121 @@ int CoapPDU::isValid() {
 		return 0;
 	}
 
-	// check code
+	// check that code is valid
+	CoapPDU::Code code = getCode();	
+	if(code<COAP_EMPTY ||
+		(code>COAP_DELETE&&code<COAP_CREATED) ||
+		(code>COAP_CONTENT&&code<COAP_BAD_REQUEST) ||
+		(code>COAP_NOT_ACCEPTABLE&&code<COAP_PRECONDITION_FAILED) ||
+		(code==0x8E) ||
+		(code>COAP_UNSUPPORTED_CONTENT_FORMAT&&code<COAP_INTERNAL_SERVER_ERROR) ||
+		(code>COAP_PROXYING_NOT_SUPPORTED) ) {
+		DBG("Invalid CoAP code: %d",code);
+		return 0;
+	}
+	DBG("CoAP code: %d",code);
 
+	// token can be anything so nothing to check
+
+	// check that options all make sense
+	uint16_t optionDelta =0, optionNumber = 0, optionValueLength = 0;
+	int totalLength = 0;
+
+	// first option occurs after token
+	int optionPos = COAP_HDR_SIZE + getTokenLength();
+
+	// may be 0 options
+	if(optionPos==_pduLength) {
+		DBG("No options. No payload.");
+		_numOptions = 0;
+		_payloadLength = 0;
+		return 1;
+	}
+
+	int bytesRemaining = _pduLength-optionPos;
+	int numOptions = 0;
+	uint8_t upperNibble = 0x00, lowerNibble = 0x00;
+
+	// walk over options and record information
+	while(1) {
+		// check for payload marker
+		if(bytesRemaining>0) {
+			uint8_t optionHeader = _pdu[optionPos];
+			if(optionHeader==0xFF) {
+				// payload
+				if(bytesRemaining>1) {
+					_payloadPointer = &_pdu[optionPos+1];
+					_payloadLength = (bytesRemaining-1);
+					DBG("Payload found, length: %d",_payloadLength);
+					return 1;
+				}
+				// payload marker but no payload
+				_payloadPointer = NULL;
+				_payloadLength = 0;
+				DBG("Payload marker but no payload.");
+				return 0;
+			}
+
+			// check that option delta and option length are valid values
+			upperNibble = (optionHeader & 0xF0) >> 4;
+			lowerNibble = (optionHeader & 0x0F);
+			if(upperNibble==0x0F||lowerNibble==0x0F) {
+				DBG("Expected option header or payload marker, got: 0x%x%x",upperNibble,lowerNibble);
+				return 0;
+			}
+			DBG("Option header byte appears sane: 0x%x%x",upperNibble,lowerNibble);
+		} else {
+			DBG("No more data. No payload.");
+			_payloadPointer = NULL;
+			_payloadLength = 0;
+			return 1;
+		}
+
+		// skip over option header byte
+		bytesRemaining--;
+
+		// check that there is enough space for the extended delta and length bytes (if any)
+		int headerBytesNeeded = computeExtraBytes(upperNibble);
+		DBG("%d extra bytes needed for extended delta",headerBytesNeeded);
+		if(headerBytesNeeded>bytesRemaining) {
+			DBG("Not enough space for extended option delta, needed %d, have %d.",headerBytesNeeded,bytesRemaining);
+			return 0;
+		}
+		headerBytesNeeded += computeExtraBytes(lowerNibble);
+		if(headerBytesNeeded>bytesRemaining) {
+			DBG("Not enough space for extended option length, needed %d, have %d.",
+				(headerBytesNeeded-computeExtraBytes(upperNibble)),bytesRemaining);
+			return 0;
+		}
+		DBG("Enough space for extended delta and length: %d, continuing.",headerBytesNeeded);
+
+		// extract option details
+		optionDelta = getOptionDelta(&_pdu[optionPos]);
+		optionNumber += optionDelta;
+		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
+		DBG("Got option: %d with length %d",optionNumber,optionValueLength);
+		// compute total length
+		totalLength = 1; // mandatory header
+		totalLength += computeExtraBytes(optionDelta);
+		totalLength += computeExtraBytes(optionValueLength);
+		totalLength += optionValueLength;
+		// check there is enough space
+		if(optionPos+totalLength>_pduLength) {
+			DBG("Not enough space for option payload, needed %d, have %d.",(totalLength-headerBytesNeeded-1),_pduLength-optionPos);
+			return 0;
+		}
+		DBG("Enough space for option payload: %d %d",optionValueLength,(totalLength-headerBytesNeeded-1));
+
+		// recompute bytesRemaining
+		bytesRemaining -= totalLength;
+		bytesRemaining++; // correct for previous --
+
+		// move to next option
+		optionPos += totalLength; 
+
+		// inc number of options XXX
+		numOptions++;
+	}
 
 
 	return 1;
@@ -106,10 +221,9 @@ CoapPDU::~CoapPDU() {
 	free(_pdu);
 }
 
-uint8_t* CoapPDU::getPDU() {
+uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
-
 
 /**
  * Sets the CoAP version.
@@ -485,8 +599,10 @@ uint16_t CoapPDU::getOptionDelta(uint8_t *option) {
 	if(delta<13) {
 		return delta;
 	} else if(delta==13) {
+		// single byte option delta
 		return (option[1]+13);
-	} else {
+	} else if(delta==14) {
+		// double byte option delta
 		// need to convert to host order
 		uint16_t networkOrder = 0x0000;
 		networkOrder |= option[1];
@@ -494,12 +610,16 @@ uint16_t CoapPDU::getOptionDelta(uint8_t *option) {
 		networkOrder |= option[2];
 		uint16_t hostOrder = ntohs(networkOrder);
 		return hostOrder+269;
+	} else {
+		// should only ever occur in payload marker
+		return delta;
 	}
 }
 
 int CoapPDU::getNumOptions() {
 	return _numOptions;
 }
+
 
 /**
  * This returns the options as a sequence of structs.
@@ -539,6 +659,7 @@ CoapPDU::CoapOption* CoapPDU::getOptions() {
 		// move to next option
 		optionPos += totalLength; 
 	}
+
 	return options;
 }
 

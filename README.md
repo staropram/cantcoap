@@ -16,7 +16,7 @@ This is a testing framework for c.
 
 You need libcunit1 and libcunit1-dev
 
-Then just type make.
+Then just type make (Note, build with GNU make on BSD).
 
 Long description
 ----------------

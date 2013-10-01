@@ -94,23 +94,23 @@ void testOptionInsertion(void) {
 	pdu->setVersion(1);
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_CHANGED);
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestA,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestA,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\x55\x55\x55");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestB,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\xff\xff\xff");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestC,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestC,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(7,3,(uint8_t*)"\xf7\xf7\xf7");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestD,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestD,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(200,3,(uint8_t*)"\x01\x02\x03");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestE,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestE,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(190,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestF,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestF,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(300,3,(uint8_t*)"\x01\x02\x03");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestG,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestG,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(195,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestH,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestH,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(1950,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestI,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestI,pdu->getPDUPointer(),pdu->getPDULength());
 	delete pdu;
 }
 
@@ -149,15 +149,15 @@ void testTokenInsertion(void) {
 	pdu->setCode(CoapPDU::COAP_CHANGED);
 	pdu->setVersion(2);
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\4\3\2\1\0",5);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\7\6\5\4\3\2\1",8);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionC,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(tokenInsertionC,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\4\3\2\1\0",5);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->_pdu,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
 	delete pdu;
 }
 

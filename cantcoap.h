@@ -44,6 +44,9 @@
 #define COAP_CODE_PROXYING_NOT_SUPPORTED		0xA5
 */
 
+#include <unistd.h>
+#include <stdint.h>
+
 //#define COAP_CODE.
 
 #define INFO(...) printf(__VA_ARGS__); printf("\r\n");
@@ -62,8 +65,20 @@
 #define COAP_HDR_SIZE 4
 #define COAP_OPTION_HDR_BYTE 1
 
-// token length, 4 bits
-// length of token in bytes (only 0 to 8 bytes allowed)
+// CoAP PDU format
+
+//   0                   1                   2                   3
+//  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |Ver| T |  TKL  |      Code     |          Message ID           |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |   Token (if any, TKL bytes) ...
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |   Options (if any) ...
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |1 1 1 1 1 1 1 1|    Payload (if any) ...
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 class CoapPDU {
 
 
@@ -175,11 +190,13 @@ class CoapPDU {
 		void printPDUAsCArray();
 
 		int getPDULength();
-		uint8_t* getPDU();
+		uint8_t* getPDUPointer();
 
-	public:
+	private:
 		uint8_t *_pdu;
 		int _pduLength;
+		uint8_t *_payloadPointer;
+		int _payloadLength;
 
 		uint8_t codeToValue(CoapPDU::Code c);
 

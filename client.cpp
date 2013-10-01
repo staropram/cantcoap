@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
 	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,8,(uint8_t*)"firmware");
 
 	// send packet to self
-	ret = send(sockfd,pdu->getPDU(),pdu->getPDULength(),0);
+	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
 	if(ret!=pdu->getPDULength()) {
 		INFO("Error sending packet to self.");
 		perror(NULL);
