@@ -106,6 +106,7 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 	INFO("Valid CoAP PDU received");
+	recvPDU->printHuman();
 	
 	return 0;
 }

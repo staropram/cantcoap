@@ -50,6 +50,7 @@
 //#define COAP_CODE.
 
 #define INFO(...) printf(__VA_ARGS__); printf("\r\n");
+#define INFOX(...); printf(__VA_ARGS__);
 #define ERR(...) printf(__VA_ARGS__); printf("\r\n");
 
 #ifdef DEBUG

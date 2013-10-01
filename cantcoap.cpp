@@ -164,6 +164,7 @@ int CoapPDU::isValid() {
 			DBG("No more data. No payload.");
 			_payloadPointer = NULL;
 			_payloadLength = 0;
+			_numOptions = numOptions;
 			return 1;
 		}
 
@@ -212,7 +213,6 @@ int CoapPDU::isValid() {
 		// inc number of options XXX
 		numOptions++;
 	}
-
 
 	return 1;
 }
@@ -374,110 +374,136 @@ CoapPDU::Code CoapPDU::getCode() {
 */
 
 void CoapPDU::printHuman() {
-	DBG("CoAP Version: %d",getVersion());
-	DBGX("Message Type: ");
+	INFO("__________________");
+	INFO("CoAP Version: %d",getVersion());
+	INFOX("Message Type: ");
 	switch(getType()) {
 		case COAP_CONFIRMABLE:
-			DBG("Confirmable");
+			INFO("Confirmable");
 		break;
 
 		case COAP_NON_CONFIRMABLE:
-			DBG("Non-Confirmable");
+			INFO("Non-Confirmable");
 		break;
 
 		case COAP_ACKNOWLEDGEMENT:
-			DBG("Acknowledgement");
+			INFO("Acknowledgement");
 		break;
 
 		case COAP_RESET:
-			DBG("Reset");
+			INFO("Reset");
 		break;
 	}
-	DBG("Token length: %d",getTokenLength());
-	DBGX("Code: ");
+	INFO("Token length: %d",getTokenLength());
+	INFOX("Code: ");
 	switch(getCode()) {
 		case COAP_EMPTY:
-			DBG("0.00 Empty");
+			INFO("0.00 Empty");
 		break;
 		case COAP_GET:
-			DBG("0.01 GET");
+			INFO("0.01 GET");
 		break;
 		case COAP_POST:
-			DBG("0.02 POST");
+			INFO("0.02 POST");
 		break;
 		case COAP_PUT:
-			DBG("0.03 PUT");
+			INFO("0.03 PUT");
 		break;
 		case COAP_DELETE:
-			DBG("0.04 DELETE");
+			INFO("0.04 DELETE");
 		break;
 		case COAP_CREATED:
-			DBG("2.01 Created");
+			INFO("2.01 Created");
 		break;
 		case COAP_DELETED:
-			DBG("2.02 Deleted");
+			INFO("2.02 Deleted");
 		break;
 		case COAP_VALID:
-			DBG("2.03 Valid");
+			INFO("2.03 Valid");
 		break;
 		case COAP_CHANGED:
-			DBG("2.04 Changed");
+			INFO("2.04 Changed");
 		break;
 		case COAP_CONTENT:
-			DBG("2.05 Content");
+			INFO("2.05 Content");
 		break;
 		case COAP_BAD_REQUEST:
-			DBG("4.00 Bad Request");
+			INFO("4.00 Bad Request");
 		break;
 		case COAP_UNAUTHORIZED:
-			DBG("4.01 Unauthorized");
+			INFO("4.01 Unauthorized");
 		break;
 		case COAP_BAD_OPTION:
-			DBG("4.02 Bad Option");
+			INFO("4.02 Bad Option");
 		break;
 		case COAP_FORBIDDEN:
-			DBG("4.03 Forbidden");
+			INFO("4.03 Forbidden");
 		break;
 		case COAP_NOT_FOUND:
-			DBG("4.04 Not Found");
+			INFO("4.04 Not Found");
 		break;
 		case COAP_METHOD_NOT_ALLOWED:
-			DBG("4.05 Method Not Allowed");
+			INFO("4.05 Method Not Allowed");
 		break;
 		case COAP_NOT_ACCEPTABLE:
-			DBG("4.06 Not Acceptable");
+			INFO("4.06 Not Acceptable");
 		break;
 		case COAP_PRECONDITION_FAILED:
-			DBG("4.12 Precondition Failed");
+			INFO("4.12 Precondition Failed");
 		break;
 		case COAP_REQUEST_ENTITY_TOO_LARGE:
-			DBG("4.13 Request Entity Too Large");
+			INFO("4.13 Request Entity Too Large");
 		break;
 		case COAP_UNSUPPORTED_CONTENT_FORMAT:
-			DBG("4.15 Unsupported Content-Format");
+			INFO("4.15 Unsupported Content-Format");
 		break;
 		case COAP_INTERNAL_SERVER_ERROR:
-			DBG("5.00 Internal Server Error");
+			INFO("5.00 Internal Server Error");
 		break;
 		case COAP_NOT_IMPLEMENTED:
-			DBG("5.01 Not Implemented");
+			INFO("5.01 Not Implemented");
 		break;
 		case COAP_BAD_GATEWAY:
-			DBG("5.02 Bad Gateway");
+			INFO("5.02 Bad Gateway");
 		break;
 		case COAP_SERVICE_UNAVAILABLE:
-			DBG("5.03 Service Unavailable");
+			INFO("5.03 Service Unavailable");
 		break;
 		case COAP_GATEWAY_TIMEOUT:
-			DBG("5.04 Gateway Timeout");
+			INFO("5.04 Gateway Timeout");
 		break;
 		case COAP_PROXYING_NOT_SUPPORTED:
-			DBG("5.05 Proxying Not Supported");
+			INFO("5.05 Proxying Not Supported");
 		break;
 	}
 	// print token value
 	// print options
+	CoapPDU::CoapOption* options = getOptions();
+	INFO("%d options:",_numOptions);
+	for(int i=0; i<_numOptions; i++) {
+		INFO("OPTION (%d/%d)",i,_numOptions);
+		INFO("   Option number (delta): %d (%d)",options[i].optionNumber,options[i].optionDelta);
+		INFO("   Value length: %d",options[i].optionValueLength);
+		INFOX("   Value: ");
+		for(int j=0; j<options[i].optionValueLength; j++) {
+			INFOX("%c",options[i].optionValuePointer[j]);
+		}
+		INFO(" ");
+		/*
+			uint16_t optionDelta;
+			uint16_t optionNumber;
+			uint16_t optionValueLength;
+			int totalLength;
+			uint8_t *optionPointer;
+			uint8_t *optionValuePointer;
+			*/
+	}
+	
 	// print payload
+	if(_payloadLength==0) {
+		INFO("No payload.");
+	}
+	INFO("__________________");
 }
 
 int CoapPDU::getPDULength() {
