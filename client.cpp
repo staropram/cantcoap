@@ -61,13 +61,14 @@ int main(int argc, char **argv) {
 	struct addrinfo *remoteAddress;
 	ret = setupAddress(remoteAddressString,remotePortString,&remoteAddress,SOCK_DGRAM,AF_INET);
 	if(ret!=0) {
-		INFO("Error setting up bind address, exiting.");
+		INFO("Error setting up remote address, exiting.");
 		return -1;
 	}
 
 	// call connect to associate remote address with socket
 	ret = connect(sockfd,remoteAddress->ai_addr,remoteAddress->ai_addrlen);
 	if(ret!=0) {
+		INFO("Error: %s.",gai_strerror(ret));
 		INFO("Error connecting to remote host.");
 		return -1;
 	}
@@ -78,9 +79,8 @@ int main(int argc, char **argv) {
 	pdu->setVersion(1);
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_GET);
-	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,3,(uint8_t*)"oma");
-	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,8,(uint8_t*)"firmware");
+	//pdu->setToken((uint8_t*)"\3\2\1\0",4);
+	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,4,(uint8_t*)"test");
 
 	// send packet to self
 	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);

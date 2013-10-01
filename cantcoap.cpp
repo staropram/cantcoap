@@ -477,6 +477,19 @@ void CoapPDU::printHuman() {
 		break;
 	}
 	// print token value
+	int tokenLength = getTokenLength();
+	uint8_t *tokenPointer = getPDUPointer()+COAP_HDR_SIZE;
+	if(tokenLength==0) {
+		INFO("No token.");
+	} else {
+		INFO("Token of %d bytes.",tokenLength);
+		INFOX("   Value: 0x");
+		for(int j=0; j<tokenLength; j++) {
+			INFOX("%.2x",tokenPointer[j]);
+		}
+		INFO(" ");
+	}
+
 	// print options
 	CoapPDU::CoapOption* options = getOptions();
 	INFO("%d options:",_numOptions);
@@ -484,24 +497,23 @@ void CoapPDU::printHuman() {
 		INFO("OPTION (%d/%d)",i,_numOptions);
 		INFO("   Option number (delta): %d (%d)",options[i].optionNumber,options[i].optionDelta);
 		INFO("   Value length: %d",options[i].optionValueLength);
-		INFOX("   Value: ");
+		INFOX("   Value: \"");
 		for(int j=0; j<options[i].optionValueLength; j++) {
 			INFOX("%c",options[i].optionValuePointer[j]);
 		}
-		INFO(" ");
-		/*
-			uint16_t optionDelta;
-			uint16_t optionNumber;
-			uint16_t optionValueLength;
-			int totalLength;
-			uint8_t *optionPointer;
-			uint8_t *optionValuePointer;
-			*/
+		INFO("\"");
 	}
 	
 	// print payload
 	if(_payloadLength==0) {
 		INFO("No payload.");
+	} else {
+		INFO("Payload of %d bytes",_payloadLength);
+		INFOX("   Value: \"");
+		for(int j=0; j<_payloadLength; j++) {
+			INFOX("%c",_payloadPointer[j]);
+		}
+		INFO("\"");
 	}
 	INFO("__________________");
 }
