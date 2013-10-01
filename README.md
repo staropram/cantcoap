@@ -12,3 +12,16 @@ Since CoAP recommends you only send one packet at at time, this means you only n
 Furthermore, the timers and interrupt processes between different embedded processor architectures, vary quite a bit. So it often makes sense to write the packet sending processes yourself.
 
 Finally, you might be sending the packets over odd transport bearers such as a SMS or a simple radio bearer. In which case, it’s easiest to deal with buffers. If I built retransmission handlers, they’d all be UDP/IP specific and would bloat the code.
+
+
+
+Required Components
+===================
+
+CUnit
+
+See: http://cunit.sourceforge.net/
+
+sudo apt-get install libcunit1
+sudo apt-get install libcunit1-dev
+sudo apt-get install libcunit1-doc
