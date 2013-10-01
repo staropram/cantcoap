@@ -40,9 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cantcoap.h"
 #include "arpa/inet.h"
 
-#define COAP_HDR_SIZE 4
-#define COAP_OPTION_HDR_BYTE 1
-
 /// Constructor
 CoapPDU::CoapPDU() {
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
@@ -66,8 +63,39 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
 // validates a PDU
 int CoapPDU::isValid() {
 	if(_pduLength<4) {
+		DBG("PDU has to be a minimum of 4 bytes. This: %d bytes",_pduLength);
 		return 0;
 	}
+	// check header
+	//   0                   1                   2                   3
+   //  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   // |Ver| T |  TKL  |      Code     |          Message ID           |
+   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   // |   Token (if any, TKL bytes) ...
+   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   // |   Options (if any) ...
+   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   // |1 1 1 1 1 1 1 1|    Payload (if any) ...
+   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+	DBG("Version: %d",getVersion());
+	DBG("Type: %d",getType());
+
+	// token length must be between 0 and 8
+	int tokenLength = getTokenLength();
+	if(tokenLength<0||tokenLength>8) {
+		DBG("Invalid token length: %d",tokenLength);
+		return 0;
+	}
+	DBG("Token length: %d",tokenLength);
+	// check total length
+	if((COAP_HDR_SIZE+tokenLength)>_pduLength) {
+		DBG("Token length would make pdu longer than actual length.");
+		return 0;
+	}
+
+	// check code
 
 
 	return 1;

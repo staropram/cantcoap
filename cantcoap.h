@@ -59,6 +59,8 @@
 	#define DBGLX(...) {};
 #endif
 
+#define COAP_HDR_SIZE 4
+#define COAP_OPTION_HDR_BYTE 1
 
 // token length, 4 bits
 // length of token in bytes (only 0 to 8 bytes allowed)
@@ -177,10 +179,8 @@ class CoapPDU {
 
 	public:
 		uint8_t *_pdu;
-		uint8_t *_token;
-
-		int _tokenLength;
 		int _pduLength;
+
 		uint8_t codeToValue(CoapPDU::Code c);
 
 		void shiftPDUUp(int shiftOffset, int shiftAmount);
