@@ -161,6 +161,27 @@ void testTokenInsertion(void) {
 	delete pdu;
 }
 
+const char *uriSetStringA = "/this/is/a/test/";
+
+void testURISetting(void) {
+	CoapPDU *pdu = new CoapPDU();
+	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+	pdu->setCode(CoapPDU::COAP_CHANGED);
+	pdu->setVersion(2);
+	pdu->setURI((char*)uriSetStringA,strlen(uriSetStringA));
+	pdu->printHuman();
+	/*
+	CoapPDU::CoapOption *options = pdu->getOptions();
+	CoapPDU::CoapOption *option;
+	for(int i=0; i<pdu->getNumOptions(); i++) {
+		option = options[i];
+		option->
+	}
+	*/
+
+	delete pdu;
+};
+
 // Method CODEs
 
 void testMethodCodes() {
@@ -207,6 +228,11 @@ int main(int argc, char **argv) {
    }
 
    if(!CU_add_test(pSuite, "Option insertion", testOptionInsertion)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
+   if(!CU_add_test(pSuite, "URI setting", testURISetting)) {
       CU_cleanup_registry();
       return CU_get_error();
    }

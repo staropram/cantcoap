@@ -137,7 +137,7 @@ class CoapPDU {
 			COAP_OPTION_PROXY_SCHEME=39
 		};
 
-		// this is only used externally
+		// sequence returned by getOptions is comprised of CoapOption elements
 		struct CoapOption {
 			uint16_t optionDelta;
 			uint16_t optionNumber;
@@ -180,6 +180,10 @@ class CoapPDU {
 		// gets a list of all options
 		CoapOption* getOptions();
 		int getNumOptions();
+		// shorthand helpers
+		int setURI(char *uri, int urilen);
+		int getURI(char *dst, int dstlen, int *outLen);
+		int hasURI();
 
 		// debugging
 		static void printBinary(uint8_t b);
@@ -214,7 +218,6 @@ class CoapPDU {
 		
 		// meta data
 		int _numOptions;
-		int _optionStart;
 		int _constructedFromBuffer;
 		uint16_t _maxAddedOptionNumber;
 };

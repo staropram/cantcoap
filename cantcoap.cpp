@@ -47,6 +47,7 @@ CoapPDU::CoapPDU() {
 	_numOptions = 0;
 	_payloadPointer = NULL;
 	_constructedFromBuffer = 0;
+	_maxAddedOptionNumber = 0;
 
 	// options
 	// XXX it would have been nice to use something like UDP_CORK or MSG_MORE 
@@ -62,6 +63,7 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
 	_pduLength = pduLength;
 	_payloadPointer = NULL;
 	_constructedFromBuffer = 1;
+	_maxAddedOptionNumber = 0;
 }
 
 // validates a PDU
@@ -228,6 +230,152 @@ CoapPDU::~CoapPDU() {
 uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
+
+int CoapPDU::setURI(char *uri, int urilen) {
+	// only '/' and alphabetic chars allowed
+	// very simple splitting done
+
+	// sanitation
+	if(urilen<=0||uri==NULL) {
+		DBG("Null or zero-length uri passed.");
+		return 1;
+	}
+
+	if(uri[0]!='/'||uri[urilen-1]!='/') {
+		DBG("URI must start and end with '/'");
+		return 1;
+	}
+
+	if(urilen==1) {
+		addOption(COAP_OPTION_URI_PATH,1,(uint8_t*)"/");
+		return 0;
+	}
+
+
+	// local vars
+	char *startP=uri,*endP=NULL;
+	int oLen = 0;
+	int bufSpace = 32;
+	char *uriBuf = (char*)malloc(bufSpace*sizeof(char));
+	if(uriBuf==NULL) {
+		DBG("Error allocating temporary memory.");
+		return 1;
+	}
+
+	while(1) {
+		// stop at end of string
+		if(*(startP+1)==0x00) {
+			break;
+		}
+
+		endP = strchr(startP+1,'/');
+		oLen = endP-startP;
+		if(oLen==0) {
+			// this means sequence "//" was encountered
+			DBG("Invalid sequence \"//\" in URI");
+			free(uriBuf);
+			return 1;
+		}
+
+		// copy sequence, make space if necessary
+		if((oLen+1)>bufSpace) {
+			char *newBuf = (char*)realloc(uriBuf,oLen+1);
+			if(newBuf==NULL) {
+				DBG("Error making space for temporary buffer");
+				free(uriBuf);
+				return 1;
+			}
+			uriBuf = newBuf;
+		}
+		// copy into temporary buffer
+		memcpy(uriBuf,startP+1,oLen-1);
+		uriBuf[oLen-1] = 0x00;
+		DBG("Adding URI_PATH %s",uriBuf);
+		// add option
+		if(addOption(COAP_OPTION_URI_PATH,oLen-1,(uint8_t*)uriBuf)!=0) {
+			DBG("Error adding option");
+			return 1;
+		}
+		startP = endP;
+	}
+
+	// clean up
+	free(uriBuf);
+	return 0;
+}
+
+int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
+	// check destination space
+	if(dstlen<=0) {
+		dst[0] = 0x00;
+		outLen = 0;
+		DBG("Destination buffer too small (0)!");
+		return 1;
+	}
+	// check option count
+	if(_numOptions==0) {
+		dst[0] = 0x00;
+		outLen = 0;
+		return 0;
+	}
+	// get options
+	CoapPDU::CoapOption *options = getOptions();
+	if(options==NULL) {
+		dst[0] = 0x00;
+		outLen = 0;
+		return 0;
+	}
+	// iterate over options to construct URI
+	CoapOption *o = NULL;
+	int bytesLeft = dstlen-1; // space for 0x00
+	int oLen = 0;
+	// add slash at beggining
+	if(bytesLeft>=1) {
+		*dst = '/';
+		dst++;
+		bytesLeft--;
+	} else {
+		DBG("No space for initial slash needed 1, got %d",bytesLeft);
+		return 1;
+	}
+	for(int i=0; i<_numOptions; i++) {
+		o = &options[i];
+		oLen = o->optionValueLength;
+		if(o->optionNumber==COAP_OPTION_URI_PATH) {
+			// check space
+			if(oLen>bytesLeft) {
+				DBG("Destination buffer too small, needed %d, got %d",oLen,bytesLeft);
+				return 1;
+			}
+			// copy URI path component
+			memcpy(dst,o->optionPointer,oLen);
+
+			// adjust counters
+			dst += oLen;
+			bytesLeft -= oLen;
+
+			// add slash following
+			if(bytesLeft>=1) {
+				*dst = '/';
+				dst++;
+				bytesLeft--;
+			} else {
+				DBG("No space for trailing slash, needed 1, got %d",bytesLeft);
+				return 1;
+			}
+		}
+	}
+
+	// add null terminating byte (always space since reserved)
+	*dst = 0x00;
+	*outLen = dstlen-bytesLeft;
+	return 0;
+}
+
+int CoapPDU::hasURI() {
+	return 1;
+}
+
 
 /**
  * Sets the CoAP version.
@@ -499,8 +647,8 @@ void CoapPDU::printHuman() {
 	INFO("%d options:",_numOptions);
 	for(int i=0; i<_numOptions; i++) {
 		INFO("OPTION (%d/%d)",i,_numOptions);
-		INFO("   Option number (delta): %d (%d)",options[i].optionNumber,options[i].optionDelta);
-		INFO("   Value length: %d",options[i].optionValueLength);
+		INFO("   Option number (delta): %hu (%hu)",options[i].optionNumber,options[i].optionDelta);
+		INFO("   Value length: %u",options[i].optionValueLength);
 		INFOX("   Value: \"");
 		for(int j=0; j<options[i].optionValueLength; j++) {
 			INFOX("%c",options[i].optionValuePointer[j]);
@@ -707,7 +855,7 @@ CoapPDU::CoapOption* CoapPDU::getOptions() {
 
 int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNumber) {
 	// zero this for safety
-	*prevOptionNumber = 0;
+	*prevOptionNumber = 0x00;
 
 	// if option is bigger than any currently stored, it goes at the end
 	// this includes the case that no option has yet been added
@@ -719,7 +867,7 @@ int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNu
 	// otherwise walk over the options
 	int optionPos = COAP_HDR_SIZE + getTokenLength();
 	uint16_t optionDelta = 0, optionValueLength = 0;
-	int currentOptionNumber = 0;
+	uint16_t currentOptionNumber = 0;
 	while(optionPos<_pduLength && optionPos!=0xFF) {
 		optionDelta = getOptionDelta(&_pdu[optionPos]);
 		currentOptionNumber += optionDelta;
@@ -840,7 +988,7 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	// find insertion location and previous option number
 	uint16_t prevOptionNumber = 0; // option number of option before insertion point
 	int insertionPosition = findInsertionPosition(insertedOptionNumber,&prevOptionNumber);
-	DBG("inserting option at position %d, after option with number: %d",insertionPosition,prevOptionNumber);
+	DBG("inserting option at position %d, after option with number: %hu",insertionPosition,prevOptionNumber);
 
 	// compute option delta length
 	uint16_t optionDelta = insertedOptionNumber-prevOptionNumber;

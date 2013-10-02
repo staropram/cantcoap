@@ -8,7 +8,7 @@ test: cantcoap.o nethelper.o cantcoap.h -lcunit
 
 COAP_OBJS=cantcoap.h cantcoap.cpp
 
-cantcoap: $(COAP_OBJS)
+cantcoap.o: $(COAP_OBJS)
 
 client: cantcoap.o nethelper.o client.cpp
 

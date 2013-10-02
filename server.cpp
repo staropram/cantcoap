@@ -13,6 +13,16 @@
 #include <math.h>
 #include "nethelper.h"
 #include "cantcoap.h"
+#include "uthash.h"
+
+//void callback(char *uri, method);
+
+struct URIHashEntry {
+    const char *uri; 
+    int id;
+    UT_hash_handle hh;
+};
+
 
 void failGracefully(int x) {
 	exit(x);
@@ -55,6 +65,25 @@ int main(int argc, char **argv) {
 	//
 	printAddress(bindAddr);
 
+	// setup URI callbacks using uthash hash table
+	struct URIHashEntry *entry = NULL, *directory = NULL, *t = NULL;
+   entry = (struct URIHashEntry*)malloc(sizeof(struct URIHashEntry));
+	const char *uri = "test";
+	entry->uri = uri;
+   HASH_ADD_KEYPTR(hh, directory, entry->uri, strlen(entry->uri), entry);
+
+   HASH_FIND_STR(directory,"betty",t);
+	if(t) {
+		DBG("betty's id is %d", t->id);
+	} else {
+		DBG("hash not found");
+	}
+   HASH_FIND_STR(directory,"test",t);
+	if(t) {
+		DBG("test's id is %d.", t->id);
+	} else {
+		DBG("hash not found.");
+	}
 
 	// temporary
 	#define BUF_LEN 500
@@ -63,7 +92,8 @@ int main(int argc, char **argv) {
 	socklen_t recvAddrLen;
 	CoapPDU *recvPDU = NULL;
 
-	// just block completely
+	// just block completely since this is only an example
+	// you're not going to use this for a production system are you ;)
 	while(1) {
 		// receive packet
 		ret = recvfrom(sockfd,&buffer,BUF_LEN,0,&recvAddr,&recvAddrLen);
@@ -71,6 +101,16 @@ int main(int argc, char **argv) {
 			INFO("Error receiving data");
 			return -1;
 		}
+
+/*
+		// try to get hostname and service
+		if(getnameinfo((struct sockaddr*)&fromAddr,fromAddrLen,hostStr,hostStrLen,servStr,servStrLen,0)==0) {
+			INFO("Received %ld bytes from %s:%s",ret,hostStr,servStr);
+		} else {
+			INFO("Received %ld bytes from %s:%d",ret,inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
+		}
+		*/
+
 
 		// validate packet
 		recvPDU = new CoapPDU((uint8_t*)buffer,ret);
@@ -83,6 +123,14 @@ int main(int argc, char **argv) {
 		recvPDU->printHuman();
 		delete recvPDU;
 	}
+
+    // free the hash table contents
+	 /*
+    HASH_ITER(hh, users, s, tmp) {
+      HASH_DEL(users, s);
+      free(s);
+    }
+	 */
 	
 	return 0;
 }
