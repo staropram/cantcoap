@@ -12,8 +12,25 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 See: http://cunit.sourceforge.net/
 
 This is a testing framework for c. 
-
 On Debian based Linux you need libcunit1 and libcunit1-dev
+
+#### Debian (Ubuntu, Mint etc...)
+
+/>sudo apt-get libcunit1
+
+/>sudo apt-get libcunit1-dev
+
+
+#### SuSE Linux - openSUSE 12.1 (x86_64)
+
+Note there is different package naming convention here for packages.
+
+/>sudo zypper install libcunit-dev
+
+/>sudo zypper install cunit-devel
+
+
+#### BSD 
 
 For BSD, CUnit is in the ports collection at /usr/ports/devel/cunit
 
