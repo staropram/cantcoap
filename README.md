@@ -8,17 +8,17 @@ Compilation
 
 Dependencies
 
-# CUnit 
+## CUnit 
 
 See: http://cunit.sourceforge.net/
 
 This is a testing framework for c. 
 
-# Debian
+## Debian
 
 You need libcunit1 and libcunit1-dev
 
-# BSD
+## BSD
 
 Cunit is in the ports collection at /usr/ports/devel/cunit
 
