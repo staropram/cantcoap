@@ -36,7 +36,7 @@ $sudo zypper install cunit-devel
 
 #### BSD 
 
-For BSD, CUnit is in the ports collection at /usr/ports/devel/cunit
+Probably some variation, but for FreeBSD, CUnit is in the ports collection at /usr/ports/devel/cunit.
 
 ## Build
 
