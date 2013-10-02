@@ -94,23 +94,23 @@ void testOptionInsertion(void) {
 	pdu->setVersion(1);
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_CHANGED);
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestA,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestA,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\x55\x55\x55");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestB,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(11,3,(uint8_t*)"\xff\xff\xff");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestC,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestC,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(7,3,(uint8_t*)"\xf7\xf7\xf7");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestD,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestD,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(200,3,(uint8_t*)"\x01\x02\x03");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestE,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestE,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(190,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestF,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestF,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(300,3,(uint8_t*)"\x01\x02\x03");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestG,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestG,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(195,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestH,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestH,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->addOption(1950,3,(uint8_t*)"\x03\x02\x01");
-	CU_ASSERT_NSTRING_EQUAL(optionInsertionTestI,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(optionInsertionTestI,pdu->getPDUPointer(),pdu->getPDULength());
 	delete pdu;
 }
 
@@ -122,9 +122,9 @@ void testHeaderFirstByteConstruction(void) {
 				pdu->setVersion(pduVersion);
 				pdu->setType(coapTypeVector[pduTypeIndex]);
 				pdu->setTokenLength(tokenLength);
-				CU_ASSERT_EQUAL(pdu->getVersion(),pduVersion);
-				CU_ASSERT_EQUAL(pdu->getType(),coapTypeVector[pduTypeIndex]);
-				CU_ASSERT_EQUAL(pdu->getTokenLength(),tokenLength);
+				CU_ASSERT_EQUAL_FATAL(pdu->getVersion(),pduVersion);
+				CU_ASSERT_EQUAL_FATAL(pdu->getType(),coapTypeVector[pduTypeIndex]);
+				CU_ASSERT_EQUAL_FATAL(pdu->getTokenLength(),tokenLength);
 			}
 		}
 	}
@@ -149,62 +149,95 @@ void testTokenInsertion(void) {
 	pdu->setCode(CoapPDU::COAP_CHANGED);
 	pdu->setVersion(2);
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\4\3\2\1\0",5);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\7\6\5\4\3\2\1",8);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionC,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionC,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\4\3\2\1\0",5);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	CU_ASSERT_NSTRING_EQUAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
 	delete pdu;
 }
 
-const char *uriSetStringA = "/this/is/a/test/";
-const char *uriSetStringB = "/";
-const char *uriSetStringC = "//";
-const char *uriSetStringD = "/a/b/c/d/e/f/g/h/";
-const char *uriSetStringE = "/anothertest/";
+const char *uriInA = "/this/is/a/test";
+const char *uriInB = "/this/is/a/test/";
+const char *uriInC = "/";
+const char *uriInD = "/a/b/c/d/e/f/g/h";
+const char *uriInE = "/anothertest";
+const char *uriInF = "test";
+const char *uriOutF = "/test";
 
-const char *uriSetStrings[5] = {
-	uriSetStringA,
-	uriSetStringB,
-	uriSetStringC,
-	uriSetStringD,
-	uriSetStringE,
+const char *uriInStrings[6] = {
+	uriInA,
+	uriInB,
+	uriInC,
+	uriInD,
+	uriInE,
+	uriInF,
 };
-const int numURISetStrings = 5;
+
+const char *uriOutStrings[6] = {
+	uriInA,
+	uriInA, // deliberate
+	uriInC,
+	uriInD,
+	uriInE,
+	uriOutF,
+};
+
+const int numURISetStrings = 6;
 
 void testURISetting(void) {
 	// locals
-	int bufLen = 64, outLen = 0;
+	int bufLen = 64, inLen = 0, outLen = 0, expectedLen = 0;
 	char outBuf[64];
 	CoapPDU *pdu = NULL;
+	char *inBuf = NULL, *expectedBuf = NULL;
 
+	// iterate over URIs
 	for(int i=0; i<numURISetStrings; i++) {
+		inBuf = (char*)uriInStrings[i];
+		inLen = strlen(inBuf);
+		expectedBuf = (char*)uriOutStrings[i];
+		expectedLen = strlen(expectedBuf);
+
+		// construct PDU
 		pdu = new CoapPDU();
 		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 		pdu->setCode(CoapPDU::COAP_CHANGED);
 		pdu->setVersion(2);
-		pdu->setURI((char*)uriSetStrings[i],strlen(uriSetStrings[i]));
-		pdu->printHuman();
 
+		// set URI-PATH options in one operation from URI
+		pdu->setURI(inBuf,inLen);
+		//pdu->printHuman();
+
+		// check that read URI is the same
 		pdu->getURI(outBuf,bufLen,&outLen);
-		DBG("Got \"%s\" with length %d",outBuf,outLen);
-		CU_ASSERT_EQUAL((size_t)outLen,strlen(uriSetStrings[i]));
-		CU_ASSERT_NSTRING_EQUAL(outBuf,uriSetStrings[i],outLen);
+
+		DBG("Got \"%s\" with length %d, supposed to get: \"%s\" with length %d",outBuf,outLen,expectedBuf,expectedLen);
+
+		CU_ASSERT_EQUAL_FATAL(expectedLen,outLen);
+		CU_ASSERT_NSTRING_EQUAL_FATAL(expectedBuf,outBuf,expectedLen);
 		delete pdu;
 	}
 
-	/*
-	//CoapPDU::CoapOption *options = pdu->getOptions();
-	CoapPDU::CoapOption *option;
-	for(int i=0; i<pdu->getNumOptions(); i++) {
-		option = options[i];
-		option->
-	}
-	*/
+	// test failure cases
+	pdu = new CoapPDU();
+	CU_ASSERT_FATAL(pdu->setURI(NULL,3)==1);
+	CU_ASSERT_FATAL(pdu->setURI("hello",5)==0);
+	CU_ASSERT_FATAL(pdu->getURI(NULL,3,NULL)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,20,NULL)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,0,&outLen)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,2,&outLen)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,3,&outLen)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,7,&outLen)==1);
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,8,&outLen)==0);
+	CU_ASSERT_NSTRING_EQUAL_FATAL(outBuf,"/hello",5);
+
+	delete pdu;
+
 
 };
 
@@ -217,7 +250,7 @@ void testMethodCodes() {
 	pdu->setVersion(2);
 	for(int codeIndex=0; codeIndex<COAP_NUM_MESSAGE_CODES; codeIndex++) {
 		pdu->setCode(coapCodeVector[codeIndex]);
-		CU_ASSERT_EQUAL(pdu->getCode(),coapCodeVector[codeIndex]);
+		CU_ASSERT_EQUAL_FATAL(pdu->getCode(),coapCodeVector[codeIndex]);
 	}
 	delete pdu;
 }

@@ -231,7 +231,6 @@ uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
 
-// XXX make it so don't have to have / at beginning and end
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/' and alphabetic chars allowed
 	// very simple splitting done
@@ -242,13 +241,9 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		return 1;
 	}
 
-	if(uri[0]!='/'||uri[urilen-1]!='/') {
-		DBG("URI must start and end with '/'");
-		return 1;
-	}
-
+	// single character URI path (including '/' case)
 	if(urilen==1) {
-		addOption(COAP_OPTION_URI_PATH,1,(uint8_t*)"/");
+		addOption(COAP_OPTION_URI_PATH,1,(uint8_t*)uri);
 		return 0;
 	}
 
@@ -265,18 +260,27 @@ int CoapPDU::setURI(char *uri, int urilen) {
 
 	while(1) {
 		// stop at end of string
-		if(*(startP+1)==0x00) {
+		if(*startP==0x00||*(startP+1)==0x00) {
 			break;
 		}
 
-		endP = strchr(startP+1,'/');
-		oLen = endP-startP;
-		if(oLen==0) {
-			// this means sequence "//" was encountered
-			DBG("Invalid sequence \"//\" in URI");
-			free(uriBuf);
-			return 1;
+		// ignore leading slash
+		if(*startP=='/') {
+			DBG("Skipping leading slash");
+			startP++;
 		}
+
+		// find next split point
+		endP = strchr(startP,'/');
+
+		// might not be another slash
+		if(endP==NULL) {
+			DBG("Ending out of slash");
+			endP = uri+urilen;
+		}
+
+		// get length of segment
+		oLen = endP-startP;
 
 		// copy sequence, make space if necessary
 		if((oLen+1)>bufSpace) {
@@ -288,12 +292,13 @@ int CoapPDU::setURI(char *uri, int urilen) {
 			}
 			uriBuf = newBuf;
 		}
+
 		// copy into temporary buffer
-		memcpy(uriBuf,startP+1,oLen-1);
-		uriBuf[oLen-1] = 0x00;
+		memcpy(uriBuf,startP,oLen);
+		uriBuf[oLen] = 0x00;
 		DBG("Adding URI_PATH %s",uriBuf);
 		// add option
-		if(addOption(COAP_OPTION_URI_PATH,oLen-1,(uint8_t*)uriBuf)!=0) {
+		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)uriBuf)!=0) {
 			DBG("Error adding option");
 			return 1;
 		}
@@ -306,24 +311,35 @@ int CoapPDU::setURI(char *uri, int urilen) {
 }
 
 int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
+	if(outLen==NULL) {
+		DBG("Output length pointer is NULL");
+		return 1;
+	}
+
+	if(dst==NULL) {
+		DBG("NULL destination buffer");
+		*outLen = 0;
+		return 1;
+	}
+
 	// check destination space
 	if(dstlen<=0) {
-		dst[0] = 0x00;
-		outLen = 0;
+		*dst = 0x00;
+		*outLen = 0;
 		DBG("Destination buffer too small (0)!");
 		return 1;
 	}
 	// check option count
 	if(_numOptions==0) {
-		dst[0] = 0x00;
-		outLen = 0;
+		*dst = 0x00;
+		*outLen = 0;
 		return 0;
 	}
 	// get options
 	CoapPDU::CoapOption *options = getOptions();
 	if(options==NULL) {
-		dst[0] = 0x00;
-		outLen = 0;
+		*dst = 0x00;
+		*outLen = 0;
 		return 0;
 	}
 	// iterate over options to construct URI
@@ -363,18 +379,21 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 			dst += oLen;
 			bytesLeft -= oLen;
 
-			// add slash following
+			// add slash following (don't know at this point if another option is coming)
 			if(bytesLeft>=1) {
 				*dst = '/';
 				dst++;
 				bytesLeft--;
 			} else {
-				DBG("No space for trailing slash, needed 1, got %d",bytesLeft);
+				DBG("Ran out of space after processing option");
 				return 1;
 			}
 		}
 	}
 
+	// remove terminating slash
+	dst--;
+	bytesLeft++;
 	// add null terminating byte (always space since reserved)
 	*dst = 0x00;
 	*outLen = (dstlen-1)-bytesLeft;

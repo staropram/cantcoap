@@ -17,16 +17,47 @@
 
 //void callback(char *uri, method);
 
+///////////// Begin Resource Stuff ///////////////
+// call backs and some other crap for mapping URIs
+// you might be thinking, huh, why not make a dynamic
+// way to construct this, and that might make sense
+// for a high performance machine, but on an embedded
+// device you really don't want all these strings in RAM
+
+typedef int (*ResourceCallback)(CoapPDU *pdu);
+
+// using uthash for the URI hash table. Each entry contains a callback handler.
 struct URIHashEntry {
     const char *uri; 
+	 ResourceCallback callback;
     int id;
     UT_hash_handle hh;
 };
 
-
-void failGracefully(int x) {
-	exit(x);
+// callback functions defined here
+int gTestCallback(CoapPDU *p) {
+	DBG("Dance motherfucker, dance");
+	return 1;
 }
+
+// resource URIs here
+const char *gURIA = "/test/";
+
+const char *gURIList[] = {
+	gURIA,
+};
+
+// URIs mapped to callback functions here
+const ResourceCallback gCallbacks[] = {
+	gTestCallback	
+};
+
+const int gNumResources = 1;
+
+///////////// End Resource Stuff //////////////
+
+// for mbed compatibility
+#define failGracefully exit
 
 int main(int argc, char **argv) {
 
@@ -67,10 +98,14 @@ int main(int argc, char **argv) {
 
 	// setup URI callbacks using uthash hash table
 	struct URIHashEntry *entry = NULL, *directory = NULL, *t = NULL;
-   entry = (struct URIHashEntry*)malloc(sizeof(struct URIHashEntry));
-	const char *uri = "test";
-	entry->uri = uri;
-   HASH_ADD_KEYPTR(hh, directory, entry->uri, strlen(entry->uri), entry);
+	for(int i=0; i<gNumResources; i++) {
+		// create new hash structure to bind URI and callback
+   	entry = (struct URIHashEntry*)malloc(sizeof(struct URIHashEntry));
+		entry->uri = gURIList[i];
+		entry->callback = gCallbacks[i];
+		// add hash structure to hash table, note that key is the URI
+   	HASH_ADD_KEYPTR(hh, directory, entry->uri, strlen(entry->uri), entry);
+	}
 
    HASH_FIND_STR(directory,"betty",t);
 	if(t) {
@@ -78,9 +113,10 @@ int main(int argc, char **argv) {
 	} else {
 		DBG("hash not found");
 	}
-   HASH_FIND_STR(directory,"test",t);
+   HASH_FIND_STR(directory,"/test/",t);
 	if(t) {
 		DBG("test's id is %d.", t->id);
+		t->callback(NULL);
 	} else {
 		DBG("hash not found.");
 	}
