@@ -162,16 +162,43 @@ void testTokenInsertion(void) {
 }
 
 const char *uriSetStringA = "/this/is/a/test/";
+const char *uriSetStringB = "/";
+const char *uriSetStringC = "//";
+const char *uriSetStringD = "/a/b/c/d/e/f/g/h/";
+const char *uriSetStringE = "/anothertest/";
+
+const char *uriSetStrings[5] = {
+	uriSetStringA,
+	uriSetStringB,
+	uriSetStringC,
+	uriSetStringD,
+	uriSetStringE,
+};
+const int numURISetStrings = 5;
 
 void testURISetting(void) {
-	CoapPDU *pdu = new CoapPDU();
-	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
-	pdu->setCode(CoapPDU::COAP_CHANGED);
-	pdu->setVersion(2);
-	pdu->setURI((char*)uriSetStringA,strlen(uriSetStringA));
-	pdu->printHuman();
+	// locals
+	int bufLen = 64, outLen = 0;
+	char outBuf[64];
+	CoapPDU *pdu = NULL;
+
+	for(int i=0; i<numURISetStrings; i++) {
+		pdu = new CoapPDU();
+		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+		pdu->setCode(CoapPDU::COAP_CHANGED);
+		pdu->setVersion(2);
+		pdu->setURI((char*)uriSetStrings[i],strlen(uriSetStrings[i]));
+		pdu->printHuman();
+
+		pdu->getURI(outBuf,bufLen,&outLen);
+		DBG("Got \"%s\" with length %d",outBuf,outLen);
+		CU_ASSERT_EQUAL((size_t)outLen,strlen(uriSetStrings[i]));
+		CU_ASSERT_NSTRING_EQUAL(outBuf,uriSetStrings[i],outLen);
+		delete pdu;
+	}
+
 	/*
-	CoapPDU::CoapOption *options = pdu->getOptions();
+	//CoapPDU::CoapOption *options = pdu->getOptions();
 	CoapPDU::CoapOption *option;
 	for(int i=0; i<pdu->getNumOptions(); i++) {
 		option = options[i];
@@ -179,7 +206,6 @@ void testURISetting(void) {
 	}
 	*/
 
-	delete pdu;
 };
 
 // Method CODEs

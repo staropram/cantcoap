@@ -231,6 +231,7 @@ uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
 
+// XXX make it so don't have to have / at beginning and end
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/' and alphabetic chars allowed
 	// very simple splitting done
@@ -347,8 +348,16 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 				DBG("Destination buffer too small, needed %d, got %d",oLen,bytesLeft);
 				return 1;
 			}
+
+			// case where single '/' exists
+			if(oLen==1&&o->optionValuePointer[0]=='/') {
+				*dst = 0x00;
+				*outLen = 1;
+				return 0;
+			}
+
 			// copy URI path component
-			memcpy(dst,o->optionPointer,oLen);
+			memcpy(dst,o->optionValuePointer,oLen);
 
 			// adjust counters
 			dst += oLen;
@@ -368,7 +377,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 
 	// add null terminating byte (always space since reserved)
 	*dst = 0x00;
-	*outLen = dstlen-bytesLeft;
+	*outLen = (dstlen-1)-bytesLeft;
 	return 0;
 }
 
