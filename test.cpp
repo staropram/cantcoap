@@ -226,7 +226,7 @@ void testURISetting(void) {
 	// test failure cases
 	pdu = new CoapPDU();
 	CU_ASSERT_FATAL(pdu->setURI(NULL,3)==1);
-	CU_ASSERT_FATAL(pdu->setURI("hello",5)==0);
+	CU_ASSERT_FATAL(pdu->setURI((char*)"hello",5)==0);
 	CU_ASSERT_FATAL(pdu->getURI(NULL,3,NULL)==1);
 	CU_ASSERT_FATAL(pdu->getURI(outBuf,20,NULL)==1);
 	CU_ASSERT_FATAL(pdu->getURI(outBuf,0,&outLen)==1);
@@ -235,9 +235,12 @@ void testURISetting(void) {
 	CU_ASSERT_FATAL(pdu->getURI(outBuf,7,&outLen)==1);
 	CU_ASSERT_FATAL(pdu->getURI(outBuf,8,&outLen)==0);
 	CU_ASSERT_NSTRING_EQUAL_FATAL(outBuf,"/hello",5);
-
 	delete pdu;
-
+	// case where there is no URI
+	pdu = new CoapPDU();
+	CU_ASSERT_FATAL(pdu->getURI(outBuf,8,&outLen)==0);
+	CU_ASSERT_EQUAL_FATAL(outLen,0);
+	delete pdu;
 
 };
 

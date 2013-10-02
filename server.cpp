@@ -36,12 +36,12 @@ struct URIHashEntry {
 
 // callback functions defined here
 int gTestCallback(CoapPDU *p) {
-	DBG("Dance motherfucker, dance");
+	DBG("gTestCallback function called");
 	return 1;
 }
 
 // resource URIs here
-const char *gURIA = "/test/";
+const char *gURIA = "/test";
 
 const char *gURIList[] = {
 	gURIA,
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 	printAddress(bindAddr);
 
 	// setup URI callbacks using uthash hash table
-	struct URIHashEntry *entry = NULL, *directory = NULL, *t = NULL;
+	struct URIHashEntry *entry = NULL, *directory = NULL, *hash = NULL;
 	for(int i=0; i<gNumResources; i++) {
 		// create new hash structure to bind URI and callback
    	entry = (struct URIHashEntry*)malloc(sizeof(struct URIHashEntry));
@@ -107,26 +107,15 @@ int main(int argc, char **argv) {
    	HASH_ADD_KEYPTR(hh, directory, entry->uri, strlen(entry->uri), entry);
 	}
 
-   HASH_FIND_STR(directory,"betty",t);
-	if(t) {
-		DBG("betty's id is %d", t->id);
-	} else {
-		DBG("hash not found");
-	}
-   HASH_FIND_STR(directory,"/test/",t);
-	if(t) {
-		DBG("test's id is %d.", t->id);
-		t->callback(NULL);
-	} else {
-		DBG("hash not found.");
-	}
-
 	// temporary
 	#define BUF_LEN 500
 	char buffer[BUF_LEN];
 	sockaddr recvAddr;
 	socklen_t recvAddrLen;
 	CoapPDU *recvPDU = NULL;
+	#define URI_BUF_LEN 32
+	char uriBuffer[URI_BUF_LEN];
+	int recvURILen = 0;
 
 	// just block completely since this is only an example
 	// you're not going to use this for a production system are you ;)
@@ -137,6 +126,7 @@ int main(int argc, char **argv) {
 			INFO("Error receiving data");
 			return -1;
 		}
+
 
 /*
 		// try to get hostname and service
@@ -157,6 +147,26 @@ int main(int argc, char **argv) {
 		}
 		INFO("Valid CoAP PDU received");
 		recvPDU->printHuman();
+
+		// depending on what this is, maybe call callback function
+		if(recvPDU->getURI(uriBuffer,URI_BUF_LEN,&recvURILen)!=0) {
+			INFO("Error retrieving URI");
+			continue;
+		}
+		if(recvURILen==0) {
+			INFO("There is no URI associated with this Coap PDU");
+		} else {
+			HASH_FIND_STR(directory,uriBuffer,hash);
+			if(hash) {
+				DBG("Hash id is %d.", hash->id);
+				hash->callback(recvPDU);
+			} else {
+				DBG("Hash not found.");
+				continue;
+			}
+		}
+		
+
 		delete recvPDU;
 	}
 
