@@ -18,14 +18,20 @@ On Debian based Linux you need libcunit1 and libcunit1-dev
 
 \#apt-get update && apt-get install libcunit1 libcunit1-dev
 
+Or for newbie types:
+
+$sudo apt-get update
+
+$sudo apt-get install libcunit1 libcunit1-dev
+
 
 #### SuSE Linux - openSUSE 12.1 (x86_64)
 
 Note there is different package naming convention here for packages.
 
-/>sudo zypper install libcunit-dev
+$sudo zypper install libcunit-dev
 
-/>sudo zypper install cunit-devel
+$sudo zypper install cunit-devel
 
 
 #### BSD 
