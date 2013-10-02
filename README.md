@@ -17,7 +17,7 @@ On Debian based Linux you need libcunit1 and libcunit1-dev
 #### Debian (Ubuntu, Mint etc...)
 
 />sudo apt-get libcunit1
-
+/>sudo apt-get libcunit1-dev
 
 For BSD, CUnit is in the ports collection at /usr/ports/devel/cunit
 
