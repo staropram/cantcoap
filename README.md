@@ -5,21 +5,17 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 
 # Compilation
 
-Dependencies
+## Dependencies
 
-## CUnit 
+### CUnit 
 
 See: http://cunit.sourceforge.net/
 
 This is a testing framework for c. 
 
-### Debian
+On Debian based Linux you need libcunit1 and libcunit1-dev
 
-You need libcunit1 and libcunit1-dev
-
-### BSD
-
-Cunit is in the ports collection at /usr/ports/devel/cunit
+For BSD, CUnit is in the ports collection at /usr/ports/devel/cunit
 
 ## Build
 
