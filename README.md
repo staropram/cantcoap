@@ -16,9 +16,7 @@ On Debian based Linux you need libcunit1 and libcunit1-dev
 
 #### Debian (Ubuntu, Mint etc...)
 
-\#apt-get libcunit1
-
-\#apt-get libcunit1-dev
+\#apt-get update && apt-get install libcunit1 libcunit1-dev
 
 
 #### SuSE Linux - openSUSE 12.1 (x86_64)
