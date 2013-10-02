@@ -3,8 +3,7 @@ cantcoap
 
 CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.
 
-Compilation
------------
+# Compilation
 
 Dependencies
 
@@ -14,20 +13,19 @@ See: http://cunit.sourceforge.net/
 
 This is a testing framework for c. 
 
-## Debian
+### Debian
 
 You need libcunit1 and libcunit1-dev
 
-## BSD
+### BSD
 
 Cunit is in the ports collection at /usr/ports/devel/cunit
 
-Build
+## Build
 
 Type make (Note, build with GNU make on BSD).
 
-Long description
-----------------
+#Long description
 
 This is a CoAP implementation with a focus on simplicity. The library only provides PDU construction and de-construction.
 The user is expected to deal with retransmissions, timeouts, and message ID matching themselves. This isn’t as arduous as it sounds and makes a lot more sense on a constrained device.
