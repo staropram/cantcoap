@@ -547,11 +547,25 @@ CoapPDU::Code CoapPDU::getCode() {
 	return (CoapPDU::Code)_pdu[1];
 }
 
-/*
-		int setMessageID(uint16_t messageID);
-		uint16_t getMessageID();
-};
-*/
+int CoapPDU::setMessageID(uint16_t messageID) {
+	// message ID is stored in network byte order
+	uint16_t networkOrder = htons(messageID);
+	// bytes 2 and 3 hold the ID
+	_pdu[2] &= 0x00;
+	_pdu[2] |= (networkOrder >> 8);    // MSB
+	_pdu[3] &= 0x00;
+	_pdu[3] |= (networkOrder & 0x00FF); // LSB
+	return 0;
+}
+
+uint16_t CoapPDU::getMessageID() {
+	// mesasge ID is stored in network byteorder
+	uint16_t networkOrder = 0x0000;
+	networkOrder |= _pdu[2];
+	networkOrder <<= 8;
+	networkOrder |= _pdu[3];
+	return ntohs(networkOrder);
+}
 
 void CoapPDU::printHuman() {
 	INFO("__________________");
@@ -656,6 +670,10 @@ void CoapPDU::printHuman() {
 			INFO("5.05 Proxying Not Supported");
 		break;
 	}
+
+	// print message ID
+	INFO("Message ID: %u",getMessageID());
+
 	// print token value
 	int tokenLength = getTokenLength();
 	uint8_t *tokenPointer = getPDUPointer()+COAP_HDR_SIZE;

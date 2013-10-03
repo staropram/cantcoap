@@ -207,7 +207,8 @@ void testURISetting(void) {
 		pdu = new CoapPDU();
 		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 		pdu->setCode(CoapPDU::COAP_CHANGED);
-		pdu->setVersion(2);
+		pdu->setVersion(1);
+		pdu->setMessageID(rand()%0xFFFF);
 
 		// set URI-PATH options in one operation from URI
 		pdu->setURI(inBuf,inLen);
@@ -225,6 +226,7 @@ void testURISetting(void) {
 
 	// test failure cases
 	pdu = new CoapPDU();
+	pdu->setMessageID(rand()%0xFFFF);
 	CU_ASSERT_FATAL(pdu->setURI(NULL,3)==1);
 	CU_ASSERT_FATAL(pdu->setURI((char*)"hello",5)==0);
 	CU_ASSERT_FATAL(pdu->getURI(NULL,3,NULL)==1);
@@ -250,10 +252,31 @@ void testMethodCodes() {
 	CoapPDU *pdu = new CoapPDU();
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_CHANGED);
-	pdu->setVersion(2);
+	pdu->setVersion(1);
+	pdu->setMessageID(rand()%0xFFFF);
 	for(int codeIndex=0; codeIndex<COAP_NUM_MESSAGE_CODES; codeIndex++) {
 		pdu->setCode(coapCodeVector[codeIndex]);
 		CU_ASSERT_EQUAL_FATAL(pdu->getCode(),coapCodeVector[codeIndex]);
+	}
+	delete pdu;
+}
+
+// message ID
+
+void testMessageID() {
+	CoapPDU *pdu = new  CoapPDU();
+	uint16_t messageID = 0, readID = 0;
+	pdu->setMessageID(0x0000);
+	CU_ASSERT_EQUAL_FATAL(pdu->getMessageID(),0x0000);
+	pdu->setMessageID(0x0001);
+	CU_ASSERT_EQUAL_FATAL(pdu->getMessageID(),0x0001);
+	pdu->setMessageID(0xFFFF);
+	CU_ASSERT_EQUAL_FATAL(pdu->getMessageID(),0xFFFF);
+	for(int i=0; i<100; i++) {
+		messageID = rand()%0xFFFF;
+		pdu->setMessageID(messageID);
+		readID = pdu->getMessageID();
+		CU_ASSERT_EQUAL_FATAL(messageID,readID);
 	}
 	delete pdu;
 }
@@ -284,6 +307,11 @@ int main(int argc, char **argv) {
       return CU_get_error();
    }
 
+   if(!CU_add_test(pSuite, "Message ID", testMessageID)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
    if(!CU_add_test(pSuite, "Token insertion", testTokenInsertion)) {
       CU_cleanup_registry();
       return CU_get_error();
@@ -298,7 +326,6 @@ int main(int argc, char **argv) {
       CU_cleanup_registry();
       return CU_get_error();
    }
-
 
    // Run all tests using the CUnit Basic interface
    CU_basic_set_mode(CU_BRM_VERBOSE);

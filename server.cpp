@@ -45,6 +45,7 @@ int gTestCallback(CoapPDU *p, int sockfd, struct sockaddr_storage *recvFrom) {
 	//  prepare appropriate response
 	CoapPDU *response = new CoapPDU();
 	response->setVersion(1);
+	response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
 
 	// what is the method code
 	switch(p->getCode()) {
