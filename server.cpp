@@ -24,7 +24,7 @@
 // for a high performance machine, but on an embedded
 // device you really don't want all these strings in RAM
 
-typedef int (*ResourceCallback)(CoapPDU *pdu);
+typedef int (*ResourceCallback)(CoapPDU *pdu, int sockfd, struct sockaddr_storage *recvFrom);
 
 // using uthash for the URI hash table. Each entry contains a callback handler.
 struct URIHashEntry {
@@ -35,8 +35,13 @@ struct URIHashEntry {
 };
 
 // callback functions defined here
-int gTestCallback(CoapPDU *p) {
+int gTestCallback(CoapPDU *p, int sockfd, struct sockaddr_storage *recvFrom) {
+	socklen_t addrLen = sizeof(struct sockaddr_in);
+	if(recvFrom->ss_family==AF_INET6) {
+		addrLen = sizeof(struct sockaddr_in6);
+	}
 	DBG("gTestCallback function called");
+
 	//  prepare appropriate response
 	CoapPDU *response = new CoapPDU();
 	response->setVersion(1);
@@ -71,7 +76,24 @@ int gTestCallback(CoapPDU *p) {
 			return 1;
 		break;
 	};
-	return 1;
+
+	// send the packet
+ 	ssize_t sent = sendto(
+		sockfd,
+		response->getPDUPointer(),
+		response->getPDULength(),
+		0,
+		(sockaddr*)recvFrom,
+		addrLen
+	);
+	if(sent<0) {
+		DBG("Error: %s.",gai_strerror(sent));
+		return 1;
+	} else {
+		DBG("Sent: %ld",sent);
+	}
+	
+	return 0;
 }
 
 // resource URIs here
@@ -126,8 +148,6 @@ int main(int argc, char **argv) {
 		perror(NULL);
 		failGracefully(5);
 	}
-	
-	//
 	printAddress(bindAddr);
 
 	// setup URI callbacks using uthash hash table
@@ -156,8 +176,8 @@ int main(int argc, char **argv) {
 	struct sockaddr_in6 *v6Addr;
 	char straddr[INET6_ADDRSTRLEN];
 
-	// just block completely since this is only an example
-	// you're not going to use this for a production system are you ;)
+	// just block and handle one packet at a time in a single thread
+	// you're not going to use this code for a production system are you ;)
 	while(1) {
 		// receive packet
 		ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
@@ -200,13 +220,17 @@ int main(int argc, char **argv) {
 			HASH_FIND_STR(directory,uriBuffer,hash);
 			if(hash) {
 				DBG("Hash id is %d.", hash->id);
-				hash->callback(recvPDU);
+				hash->callback(recvPDU,sockfd,&recvAddr);
+				continue;
 			} else {
 				DBG("Hash not found.");
 				continue;
 			}
 		}
 		
+		// no URI, handle cases
+
+		// code==0, no payload, this is a ping request, send RST
 
 		delete recvPDU;
 	}
