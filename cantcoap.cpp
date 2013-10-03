@@ -758,6 +758,18 @@ void CoapPDU::printHuman() {
 			case COAP_OPTION_PROXY_SCHEME:
 				INFO("PROXY_SCHEME");
 			break;
+			case COAP_OPTION_BLOCK1:
+				INFO("BLOCK1");
+			break;
+			case COAP_OPTION_BLOCK2:
+				INFO("BLOCK2");
+			break;
+			case COAP_OPTION_SIZE1:
+				INFO("SIZE1");
+			break;
+			case COAP_OPTION_SIZE2:
+				INFO("SIZE2");
+			break;
 			default:
 				INFO("Unknown option");
 			break;
