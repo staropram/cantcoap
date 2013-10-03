@@ -714,6 +714,54 @@ void CoapPDU::printHuman() {
 	for(int i=0; i<_numOptions; i++) {
 		INFO("OPTION (%d/%d)",i,_numOptions);
 		INFO("   Option number (delta): %hu (%hu)",options[i].optionNumber,options[i].optionDelta);
+		INFOX("   Name: ");
+		switch(options[i].optionNumber) {
+			case COAP_OPTION_IF_MATCH:
+				INFO("IF_MATCH");
+			break;
+			case COAP_OPTION_URI_HOST:
+				INFO("URI_HOST");
+			break;
+			case COAP_OPTION_ETAG:
+				INFO("ETAG");
+			break;
+			case COAP_OPTION_IF_NONE_MATCH:
+				INFO("IF_NONE_MATCH");
+			break;
+			case COAP_OPTION_URI_PORT:
+				INFO("URI_PORT");
+			break;
+			case COAP_OPTION_LOCATION_PATH:
+				INFO("LOCATION_PATH");
+			break;
+			case COAP_OPTION_URI_PATH:
+				INFO("URI_PATH");
+			break;
+			case COAP_OPTION_CONTENT_FORMAT:
+				INFO("CONTENT_FORMAT");
+			break;
+			case COAP_OPTION_MAX_AGE:
+				INFO("MAX_AGE");
+			break;
+			case COAP_OPTION_URI_QUERY:
+				INFO("URI_QUERY");
+			break;
+			case COAP_OPTION_ACCEPT:
+				INFO("ACCEPT");
+			break;
+			case COAP_OPTION_LOCATION_QUERY:
+				INFO("LOCATION_QUERY");
+			break;
+			case COAP_OPTION_PROXY_URI:
+				INFO("PROXY_URI");
+			break;
+			case COAP_OPTION_PROXY_SCHEME:
+				INFO("PROXY_SCHEME");
+			break;
+			default:
+				INFO("Unknown option");
+			break;
+		}
 		INFO("   Value length: %u",options[i].optionValueLength);
 		INFOX("   Value: \"");
 		for(int j=0; j<options[i].optionValueLength; j++) {
@@ -1241,6 +1289,15 @@ uint8_t* CoapPDU::getPayloadCopy() {
 
 // content format
 int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
+	if(format==0) {
+		// minimal representation means null option value
+		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,0,NULL)!=0) {
+			DBG("Error setting content format");
+			return 1;
+		}
+		return 0;
+	}
+
 	uint8_t c[2];
 	uint16_t networkOrder = htons(format);
 	c[0] &= 0x00;
