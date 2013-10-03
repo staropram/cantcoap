@@ -79,9 +79,10 @@ int main(int argc, char **argv) {
 	pdu->setVersion(1);
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_GET);
-	pdu->setToken((uint8_t*)"\3\2\1\0",4);
+	pdu->setToken((uint8_t*)"\3\2\1\1",4);
 	pdu->setMessageID(0x0005);
-	pdu->setURI((char*)"test",4);
+	pdu->setURI((char*)"large-update",12);
+	pdu->addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,(uint8_t*)")");
 
 	// send packet to self
 	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);

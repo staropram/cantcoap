@@ -995,7 +995,7 @@ int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNu
 	int optionPos = COAP_HDR_SIZE + getTokenLength();
 	uint16_t optionDelta = 0, optionValueLength = 0;
 	uint16_t currentOptionNumber = 0;
-	while(optionPos<_pduLength && optionPos!=0xFF) {
+	while(optionPos<_pduLength && _pdu[optionPos]!=0xFF) {
 		optionDelta = getOptionDelta(&_pdu[optionPos]);
 		currentOptionNumber += optionDelta;
 		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
@@ -1299,6 +1299,17 @@ int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
 	}
 
 	uint8_t c[2];
+
+	// just use 1 byte if can do it
+	if(format<256) {
+		c[0] = format;
+		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,c)!=0) {
+			DBG("Error setting content format");
+			return 1;
+		}
+		return 0;
+	}
+
 	uint16_t networkOrder = htons(format);
 	c[0] &= 0x00;
 	c[0] |= (networkOrder >> 8);     // MSB
