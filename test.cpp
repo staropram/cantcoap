@@ -158,6 +158,8 @@ void testTokenInsertion(void) {
 	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionB,pdu->getPDUPointer(),pdu->getPDULength());
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
 	CU_ASSERT_NSTRING_EQUAL_FATAL(tokenInsertionA,pdu->getPDUPointer(),pdu->getPDULength());
+	CU_ASSERT_FATAL(pdu->setToken(NULL,4)==1);
+	CU_ASSERT_FATAL(pdu->setToken((uint8_t*)"a",0)==1);
 	delete pdu;
 }
 

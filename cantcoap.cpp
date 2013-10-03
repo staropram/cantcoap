@@ -455,8 +455,24 @@ int CoapPDU::getTokenLength() {
 	return _pdu[0] & 0x0F;
 }
 
+uint8_t* CoapPDU::getTokenPointer() {
+	if(getTokenLength()==0) {
+		return NULL;
+	}
+	return &_pdu[4];
+}
+
 int CoapPDU::setToken(uint8_t *token, uint8_t tokenLength) {
 	DBG("Setting token");
+	if(token==NULL) {
+		DBG("NULL pointer passed as token reference");
+		return 1;
+	}
+
+	if(tokenLength==0) {
+		DBG("Token has zero length");
+		return 1;
+	}
 
 	// if tokenLength has not changed, just copy the new value
 	uint8_t oldTokenLength = getTokenLength();

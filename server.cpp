@@ -48,6 +48,7 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 	response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
 	response->setMessageID(request->getMessageID());
 	response->setCode(CoapPDU::COAP_CONTENT);
+	response->setToken(request->getTokenPointer(),request->getTokenLength());
 
 	// what is the method code
 	switch(request->getCode()) {

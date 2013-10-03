@@ -10,7 +10,7 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 	pdu->setCode(CoapPDU::COAP_GET);
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
 	pdu->setMessageID(0x0005);
-	pdu->addOption(CoapPDU::COAP_OPTION_URI_PATH,4,(uint8_t*)"test");
+	pdu->setURI((char*)"test",4);
 
 	// send packet 
 	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);

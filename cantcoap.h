@@ -165,6 +165,7 @@ class CoapPDU {
 		// tokens
 		int setTokenLength(uint8_t tokenLength);
 		int getTokenLength();
+		uint8_t* getTokenPointer();
 		int setToken(uint8_t *token, uint8_t tokenLength);
 
 		// message code
