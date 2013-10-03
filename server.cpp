@@ -46,8 +46,8 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 	CoapPDU *response = new CoapPDU();
 	response->setVersion(1);
 	response->setMessageID(request->getMessageID());
-	//response->setToken(request->getTokenPointer(),request->getTokenLength());
-	response->setToken((uint8_t*)"\1\16",2);
+	response->setToken(request->getTokenPointer(),request->getTokenLength());
+	//response->setToken((uint8_t*)"\1\16",2);
 	char *payload = (char*)"This is some radical shit right here";
 
 	// respond differently, depending on method code
