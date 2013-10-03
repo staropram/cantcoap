@@ -35,7 +35,7 @@ struct URIHashEntry {
 };
 
 // callback functions defined here
-int gTestCallback(CoapPDU *p, int sockfd, struct sockaddr_storage *recvFrom) {
+int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFrom) {
 	socklen_t addrLen = sizeof(struct sockaddr_in);
 	if(recvFrom->ss_family==AF_INET6) {
 		addrLen = sizeof(struct sockaddr_in6);
@@ -46,9 +46,11 @@ int gTestCallback(CoapPDU *p, int sockfd, struct sockaddr_storage *recvFrom) {
 	CoapPDU *response = new CoapPDU();
 	response->setVersion(1);
 	response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
+	response->setMessageID(request->getMessageID());
+	response->setCode(CoapPDU::COAP_CONTENT);
 
 	// what is the method code
-	switch(p->getCode()) {
+	switch(request->getCode()) {
 		case CoapPDU::COAP_EMPTY:
 		break;
 		case CoapPDU::COAP_GET:
@@ -64,7 +66,7 @@ int gTestCallback(CoapPDU *p, int sockfd, struct sockaddr_storage *recvFrom) {
 	}
 
 	// type
-	switch(p->getType()) {
+	switch(request->getType()) {
 		case CoapPDU::COAP_CONFIRMABLE:
 		break;
 		case CoapPDU::COAP_NON_CONFIRMABLE:
