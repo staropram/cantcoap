@@ -40,12 +40,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cantcoap.h"
 #include "arpa/inet.h"
 
-/// Constructor
+/// constructor
 CoapPDU::CoapPDU() {
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
 	_pduLength = 4;
 	_numOptions = 0;
 	_payloadPointer = NULL;
+	_payloadLength = 0;
 	_constructedFromBuffer = 0;
 	_maxAddedOptionNumber = 0;
 
@@ -60,8 +61,10 @@ CoapPDU::CoapPDU() {
 CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
 	// XXX should we copy this ?
 	_pdu = pdu;
+	_numOptions = 0;
 	_pduLength = pduLength;
 	_payloadPointer = NULL;
+	_payloadLength = 0;
 	_constructedFromBuffer = 1;
 	_maxAddedOptionNumber = 0;
 }
@@ -737,10 +740,11 @@ int CoapPDU::getPDULength() {
 }
 
 void CoapPDU::printPDUAsCArray() {
+	printf("const uint8_t array[] = {\r\n   ");
 	for(int i=0; i<_pduLength; i++) {
 		printf("0x%.2x, ",_pdu[i]);
 	}
-	printf("\r\n");
+	printf("\r\n};\r\n");
 }
 
 void CoapPDU::printOptionHuman(uint8_t *option) {
@@ -877,6 +881,8 @@ int CoapPDU::getNumOptions() {
  * This returns the options as a sequence of structs.
  */
 CoapPDU::CoapOption* CoapPDU::getOptions() {
+	DBG("getOptions() called, %d options.",_numOptions);
+
 	uint16_t optionDelta =0, optionNumber = 0, optionValueLength = 0;
 	int totalLength = 0;
 
@@ -1095,7 +1101,6 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	int newNextOptionDeltaBytes = computeExtraBytes(newNextOptionDelta);
 	// determine adjustment
 	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
-	
 
 	// create space for new option, including adjustment space for option delta
 	#ifdef DEBUG
@@ -1152,6 +1157,77 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	// done, mark it with B! 
 	return 0;
 }
+
+// XXX add a no-malloc option later so that people can pass a buffer in to use
+// for now, just use this buffer
+uint8_t* CoapPDU::mallocPayload(int len) {
+	if(len==0) {
+		DBG("Cannot allocate a zero length payload");
+		return NULL;
+	}
+
+	// make space for payload (and payload marker)
+	int newLen = _pduLength+len+1;
+	uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
+	if(newPDU==NULL) {
+		DBG("Cannot allocate space for payload");
+		return NULL;
+	}
+	_pdu = newPDU;
+	// set payload marker
+	_pdu[_pduLength] = 0xFF;
+	// update payload pointer
+	_payloadPointer = &_pdu[_pduLength+1];
+	_payloadLength = len;
+	_pduLength = newLen;
+	return _payloadPointer;
+}
+
+// the assumption here is that no payload has been allocated
+// so this will always go at the end
+int CoapPDU::setPayload(uint8_t *payload, int len) {
+	if(payload==NULL) {
+		DBG("NULL payload pointer.");
+		return 1;
+	}
+
+	uint8_t *payloadPointer = mallocPayload(len);
+	if(payloadPointer==NULL) {
+		DBG("Allocation of payload failed");
+		return 1;
+	}
+
+	// copy payload contents
+	memcpy(payloadPointer,payload,len);
+
+	return 0;
+}
+
+uint8_t* CoapPDU::getPayloadPointer() {
+	return _payloadPointer;
+}
+
+int CoapPDU::getPayloadLength() {
+	return _payloadLength;
+}
+
+uint8_t* CoapPDU::getPayloadCopy() {
+	if(_payloadLength==0) {
+		return NULL;
+	}
+
+	// malloc space for copy
+	uint8_t *payload = (uint8_t*)malloc(_payloadLength);
+	if(payload==NULL) {
+		DBG("Unable to allocate memory for payload");
+		return NULL;
+	}
+
+	// copy and return
+	memcpy(payload,_payloadPointer,_payloadLength);
+	return payload;
+}
+
 
 void CoapPDU::printHex() {
 	printf("Hexdump dump of PDU\r\n");

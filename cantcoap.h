@@ -186,6 +186,13 @@ class CoapPDU {
 		int getURI(char *dst, int dstlen, int *outLen);
 		int hasURI();
 
+		// payload
+		uint8_t* mallocPayload(int bytes);
+		int setPayload(uint8_t *value, int len);
+		uint8_t* getPayloadPointer();
+		int getPayloadLength();
+		uint8_t* getPayloadCopy();
+
 		// debugging
 		static void printBinary(uint8_t b);
 		void print();
@@ -199,15 +206,23 @@ class CoapPDU {
 		uint8_t* getPDUPointer();
 
 	private:
+		// variables
 		uint8_t *_pdu;
 		int _pduLength;
+
 		uint8_t *_payloadPointer;
 		int _payloadLength;
 
-		uint8_t codeToValue(CoapPDU::Code c);
+		int _numOptions;
 
+		// meta data
+		int _constructedFromBuffer;
+		uint16_t _maxAddedOptionNumber;
+
+		// functions
 		void shiftPDUUp(int shiftOffset, int shiftAmount);
 		void shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount);
+		uint8_t codeToValue(CoapPDU::Code c);
 
 		// option stuff
 		int findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNumber);
@@ -217,8 +232,4 @@ class CoapPDU {
 		void setOptionDelta(int optionPosition, uint16_t optionDelta);
 		uint16_t getOptionValueLength(uint8_t *option);
 		
-		// meta data
-		int _numOptions;
-		int _constructedFromBuffer;
-		uint16_t _maxAddedOptionNumber;
 };

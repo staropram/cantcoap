@@ -283,6 +283,29 @@ void testMessageID() {
 	delete pdu;
 }
 
+// payloads
+const uint8_t payloadTestPDUA[] = {
+   0x40, 0x01, 0x34, 0x12, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x01, 0x02, 0x03,
+}; 
+
+void testPayload() {
+	CoapPDU *pdu = new CoapPDU();
+	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+	pdu->setCode(CoapPDU::COAP_GET);
+	pdu->setVersion(1);
+	pdu->printBin();
+	pdu->setMessageID(0x1234);
+	pdu->setURI((char*)"test",4);
+	CU_ASSERT_FATAL(pdu->setPayload(NULL,4)==1);
+	CU_ASSERT_FATAL(pdu->setPayload((uint8_t*)"test",0)==1);
+	pdu->setPayload((uint8_t*)"\1\2\3",3);
+	pdu->printBin();
+	CU_ASSERT_EQUAL(pdu->getPayloadLength(),3);
+	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUA,pdu->getPDULength());
+	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2\3",pdu->getPayloadLength());
+	delete pdu;
+}
+
 int main(int argc, char **argv) {
 	// use CUnit test framework
 	CU_pSuite pSuite = NULL;
@@ -325,6 +348,11 @@ int main(int argc, char **argv) {
    }
 
    if(!CU_add_test(pSuite, "URI setting", testURISetting)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
+   if(!CU_add_test(pSuite, "Payload setting", testPayload)) {
       CU_cleanup_registry();
       return CU_get_error();
    }
