@@ -37,6 +37,40 @@ struct URIHashEntry {
 // callback functions defined here
 int gTestCallback(CoapPDU *p) {
 	DBG("gTestCallback function called");
+	//  prepare appropriate response
+	CoapPDU *response = new CoapPDU();
+	response->setVersion(1);
+
+	// what is the method code
+	switch(p->getCode()) {
+		case CoapPDU::COAP_EMPTY:
+		break;
+		case CoapPDU::COAP_GET:
+		break;
+		case CoapPDU::COAP_POST:
+		break;
+		case CoapPDU::COAP_PUT:
+		break;
+		case CoapPDU::COAP_DELETE:
+		break;
+		default: 
+		break;
+	}
+
+	// type
+	switch(p->getType()) {
+		case CoapPDU::COAP_CONFIRMABLE:
+		break;
+		case CoapPDU::COAP_NON_CONFIRMABLE:
+		break;
+		case CoapPDU::COAP_ACKNOWLEDGEMENT:
+		break;
+		case CoapPDU::COAP_RESET:
+		break;
+		default:
+			return 1;
+		break;
+	};
 	return 1;
 }
 
@@ -107,36 +141,43 @@ int main(int argc, char **argv) {
    	HASH_ADD_KEYPTR(hh, directory, entry->uri, strlen(entry->uri), entry);
 	}
 
-	// temporary
+	// buffers for UDP and URIs
 	#define BUF_LEN 500
-	char buffer[BUF_LEN];
-	sockaddr recvAddr;
-	socklen_t recvAddrLen;
-	CoapPDU *recvPDU = NULL;
 	#define URI_BUF_LEN 32
+	char buffer[BUF_LEN];
 	char uriBuffer[URI_BUF_LEN];
 	int recvURILen = 0;
+	CoapPDU *recvPDU = NULL;
+
+	// storage for handling receive address
+	struct sockaddr_storage recvAddr;
+	socklen_t recvAddrLen = sizeof(struct sockaddr_storage);
+	struct sockaddr_in *v4Addr;
+	struct sockaddr_in6 *v6Addr;
+	char straddr[INET6_ADDRSTRLEN];
 
 	// just block completely since this is only an example
 	// you're not going to use this for a production system are you ;)
 	while(1) {
 		// receive packet
-		ret = recvfrom(sockfd,&buffer,BUF_LEN,0,&recvAddr,&recvAddrLen);
+		ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
 		if(ret==-1) {
 			INFO("Error receiving data");
 			return -1;
 		}
 
+		// print src address
+		switch(recvAddr.ss_family) {
+			case AF_INET:
+				v4Addr = (struct sockaddr_in*)&recvAddr;
+				INFO("Got packet from %s:%d",inet_ntoa(v4Addr->sin_addr),ntohs(v4Addr->sin_port));
+			break;
 
-/*
-		// try to get hostname and service
-		if(getnameinfo((struct sockaddr*)&fromAddr,fromAddrLen,hostStr,hostStrLen,servStr,servStrLen,0)==0) {
-			INFO("Received %ld bytes from %s:%s",ret,hostStr,servStr);
-		} else {
-			INFO("Received %ld bytes from %s:%d",ret,inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
+			case AF_INET6:
+				v6Addr = (struct sockaddr_in6*)&recvAddr;
+				INFO("Got packet from %s:%d",inet_ntop(AF_INET6,&v6Addr->sin6_addr,straddr,sizeof(straddr)),ntohs(v6Addr->sin6_port));
+			break;
 		}
-		*/
-
 
 		// validate packet
 		recvPDU = new CoapPDU((uint8_t*)buffer,ret);
