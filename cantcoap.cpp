@@ -781,7 +781,7 @@ void CoapPDU::printHuman() {
 			if((c>='!'&&c<='~')||c==' ') {
 				INFOX("%c",c);
 			} else {
-				INFOX("\\%x",c);
+				INFOX("\\%.2d",c);
 			}
 		}
 		INFO("\"");
@@ -798,7 +798,7 @@ void CoapPDU::printHuman() {
 			if((c>='!'&&c<='~')||c==' ') {
 				INFOX("%c",c);
 			} else {
-				INFOX("\\%x",c);
+				INFOX("\\%.2x",c);
 			}
 		}
 		INFO("\"");

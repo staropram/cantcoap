@@ -45,25 +45,28 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 	//  prepare appropriate response
 	CoapPDU *response = new CoapPDU();
 	response->setVersion(1);
-	response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
 	response->setMessageID(request->getMessageID());
-	response->setCode(CoapPDU::COAP_CONTENT);
 	response->setToken(request->getTokenPointer(),request->getTokenLength());
-	response->setContentFormat(CoapPDU::COAP_CONTENT_FORMAT_TEXT_PLAIN);
 	char *payload = (char*)"This is some radical shit right here";
-	response->setPayload((uint8_t*)payload,strlen(payload));
 
-	// what is the method code
+	// respond differently, depending on method code
 	switch(request->getCode()) {
 		case CoapPDU::COAP_EMPTY:
+			// makes no sense, send RST
 		break;
 		case CoapPDU::COAP_GET:
+			response->setCode(CoapPDU::COAP_CONTENT);
+			response->setContentFormat(CoapPDU::COAP_CONTENT_FORMAT_TEXT_PLAIN);
+			response->setPayload((uint8_t*)payload,strlen(payload));
 		break;
 		case CoapPDU::COAP_POST:
+			response->setCode(CoapPDU::COAP_CREATED);
 		break;
 		case CoapPDU::COAP_PUT:
+			response->setCode(CoapPDU::COAP_CHANGED);
 		break;
 		case CoapPDU::COAP_DELETE:
+			response->setCode(CoapPDU::COAP_DELETED);
 		break;
 		default: 
 		break;
@@ -72,8 +75,10 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 	// type
 	switch(request->getType()) {
 		case CoapPDU::COAP_CONFIRMABLE:
+			response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
 		break;
 		case CoapPDU::COAP_NON_CONFIRMABLE:
+			response->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
 		break;
 		case CoapPDU::COAP_ACKNOWLEDGEMENT:
 		break;
