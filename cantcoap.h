@@ -137,6 +137,31 @@ class CoapPDU {
 			COAP_OPTION_PROXY_SCHEME=39
 		};
 
+/*
+	+------------------+----------+-------+-----------------------------+
+   | Media type       | Encoding |   Id. | Reference                   |
+   +------------------+----------+-------+-----------------------------+
+   | text/plain;      | -        |     0 | [RFC2046][RFC3676][RFC5147] |
+   | charset=utf-8    |          |       |                             |
+   | application/     | -        |    40 | [RFC6690]                   |
+   | link-format      |          |       |                             |
+   | application/xml  | -        |    41 | [RFC3023]                   |
+   | application/     | -        |    42 | [RFC2045][RFC2046]          |
+   | octet-stream     |          |       |                             |
+   | application/exi  | -        |    47 | [EXIMIME]                   |
+   | application/json | -        |    50 | [RFC4627]                   |
+   +------------------+----------+-------+-----------------------------+
+	*/
+
+		enum ContentFormat {
+			COAP_CONTENT_FORMAT_TEXT_PLAIN = 0,
+			COAP_CONTENT_FORMAT_APP_LINK  = 40,
+			COAP_CONTENT_FORMAT_APP_XML,
+			COAP_CONTENT_FORMAT_APP_OCTET,
+			COAP_CONTENT_FORMAT_APP_EXI   = 47,
+			COAP_CONTENT_FORMAT_APP_JSON  = 50
+		};
+
 		// sequence returned by getOptions is comprised of CoapOption elements
 		struct CoapOption {
 			uint16_t optionDelta;
@@ -185,6 +210,9 @@ class CoapPDU {
 		int setURI(char *uri, int urilen);
 		int getURI(char *dst, int dstlen, int *outLen);
 		int hasURI();
+
+		// content format helper
+		int setContentFormat(CoapPDU::ContentFormat format);
 
 		// payload
 		uint8_t* mallocPayload(int bytes);

@@ -149,6 +149,7 @@ int CoapPDU::isValid() {
 				if(bytesRemaining>1) {
 					_payloadPointer = &_pdu[optionPos+1];
 					_payloadLength = (bytesRemaining-1);
+					_numOptions = numOptions;
 					DBG("Payload found, length: %d",_payloadLength);
 					return 1;
 				}
@@ -716,7 +717,12 @@ void CoapPDU::printHuman() {
 		INFO("   Value length: %u",options[i].optionValueLength);
 		INFOX("   Value: \"");
 		for(int j=0; j<options[i].optionValueLength; j++) {
-			INFOX("%c",options[i].optionValuePointer[j]);
+			char c = options[i].optionValuePointer[j];
+			if((c>='!'&&c<='~')||c==' ') {
+				INFOX("%c",c);
+			} else {
+				INFOX("\\%x",c);
+			}
 		}
 		INFO("\"");
 	}
@@ -728,7 +734,12 @@ void CoapPDU::printHuman() {
 		INFO("Payload of %d bytes",_payloadLength);
 		INFOX("   Value: \"");
 		for(int j=0; j<_payloadLength; j++) {
-			INFOX("%c",_payloadPointer[j]);
+			char c = _payloadPointer[j];
+			if((c>='!'&&c<='~')||c==' ') {
+				INFOX("%c",c);
+			} else {
+				INFOX("\\%x",c);
+			}
 		}
 		INFO("\"");
 	}
@@ -1228,6 +1239,20 @@ uint8_t* CoapPDU::getPayloadCopy() {
 	return payload;
 }
 
+// content format
+int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
+	uint8_t c[2];
+	uint16_t networkOrder = htons(format);
+	c[0] &= 0x00;
+	c[0] |= (networkOrder >> 8);     // MSB
+	c[1] &= 0x00;
+	c[1] |= (networkOrder & 0x00FF); // LSB
+	if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,2,c)!=0) {
+		DBG("Error setting content format");
+		return 1;
+	}
+	return 0;
+}
 
 void CoapPDU::printHex() {
 	printf("Hexdump dump of PDU\r\n");
