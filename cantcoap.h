@@ -57,10 +57,12 @@
 	#define DBG(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n");
 	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
 	#define DBGLX(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__);
+	#define DBG_PDU() printBin();
 #else
 	#define DBG(...) {};
 	#define DBGX(...) {};
 	#define DBGLX(...) {};
+	#define DBG_PDU() {};
 #endif
 
 #define COAP_HDR_SIZE 4

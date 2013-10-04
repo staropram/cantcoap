@@ -287,23 +287,64 @@ void testMessageID() {
 const uint8_t payloadTestPDUA[] = {
    0x40, 0x01, 0x34, 0x12, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x01, 0x02, 0x03,
 }; 
+const uint8_t payloadTestPDUB[] = {
+   0x40, 0x01, 0x34, 0x12, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x04, 0x03, 0x02, 0x01
+}; 
+const uint8_t payloadTestPDUC[] = {
+   0x40, 0x01, 0x34, 0x12, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x01, 0x02,
+}; 
 
 void testPayload() {
-	CoapPDU *pdu = new CoapPDU();
-	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
-	pdu->setCode(CoapPDU::COAP_GET);
-	pdu->setVersion(1);
-	pdu->printBin();
-	pdu->setMessageID(0x1234);
-	pdu->setURI((char*)"test",4);
-	CU_ASSERT_FATAL(pdu->setPayload(NULL,4)==1);
-	CU_ASSERT_FATAL(pdu->setPayload((uint8_t*)"test",0)==1);
-	pdu->setPayload((uint8_t*)"\1\2\3",3);
-	pdu->printBin();
-	CU_ASSERT_EQUAL(pdu->getPayloadLength(),3);
-	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUA,pdu->getPDULength());
-	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2\3",pdu->getPayloadLength());
-	delete pdu;
+	// test for both buffer and dynamic
+	CoapPDU *pdu = NULL;
+	uint8_t *buffer[32];
+	for(int i=0; i<2; i++) {
+		switch(i) {
+			case 0:
+				pdu = new CoapPDU((uint8_t*)buffer,32,0);
+			break;
+			case 1:
+				pdu->reset();
+			break;
+			case 2:
+				pdu = new CoapPDU();
+			break;
+			case 3:
+				pdu->reset();
+			break;
+		}
+		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+		pdu->printBin();
+		pdu->setCode(CoapPDU::COAP_GET);
+		pdu->setVersion(1);
+		pdu->printBin();
+		pdu->setMessageID(0x1234);
+		pdu->setURI((char*)"test",4);
+		pdu->printBin();
+		CU_ASSERT_FATAL(pdu->setPayload(NULL,4)==1);
+		CU_ASSERT_FATAL(pdu->setPayload((uint8_t*)"test",0)==1);
+		pdu->setPayload((uint8_t*)"\1\2\3",3);
+		pdu->printBin();
+		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),3);
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUA,pdu->getPDULength());
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2\3",pdu->getPayloadLength());
+		DBG("Trying to increase payload size");
+		pdu->setPayload((uint8_t*)"\4\3\2\1",4);
+		pdu->printBin();
+		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),4);
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUB,pdu->getPDULength());
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\4\3\2\1",pdu->getPayloadLength());
+		DBG("Trying to reduce payload size");
+		pdu->setPayload((uint8_t*)"\1\2",2);
+		pdu->printBin();
+		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),2);
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUC,pdu->getPDULength());
+		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2",pdu->getPayloadLength());
+		if(i%2) {
+			DBG("%d DELETE",i);
+			delete pdu;
+		}
+	}
 }
 
 int main(int argc, char **argv) {
@@ -352,7 +393,8 @@ int main(int argc, char **argv) {
       return CU_get_error();
    }
 
-   if(!CU_add_test(pSuite, "Payload setting", testPayload)) {
+	CU_pTest payloadTest = CU_add_test(pSuite, "Payload setting", testPayload);
+   if(!payloadTest) {
       CU_cleanup_registry();
       return CU_get_error();
    }

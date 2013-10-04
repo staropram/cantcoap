@@ -96,20 +96,8 @@ CoapPDU::CoapPDU() {
 
  * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength)
  */
-CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
-	// pdu
-	_pdu = pdu;
-	_pduLength = pduLength;
-	_bufferLength = pduLength;
-	_constructedFromBuffer = 1;
-
-	// options
-	_numOptions = 0;
-	_maxAddedOptionNumber = 0;
-
-	// payload
-	_payloadPointer = NULL;
-	_payloadLength = 0;
+CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) : CoapPDU(pdu,pduLength,pduLength) {
+	// delegated
 }
 
 /// Construct object from external buffer that may be larger than actual PDU.
@@ -128,10 +116,23 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
  * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU(uint8_t *pdu, int pduLength)
  */
 CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
+	// sanity
+	if(pduLength<4&&pduLength!=0) {
+		DBG("PDU cannot have a length less than 4");
+	}
+
 	// pdu
 	_pdu = buffer;
-	_pduLength = pduLength;
 	_bufferLength = bufferLength;
+	if(pduLength==0) {
+		// this is actually a fresh pdu, header always exists
+		_pduLength = 4;
+		// make sure header is zeroed
+		_pdu[0] = 0x00; _pdu[1] = 0x00; _pdu[2] = 0x00; _pdu[3] = 0x00;
+	} else {
+		_pduLength = pduLength;
+	}
+
 	_constructedFromBuffer = 1;
 
 	// options
@@ -165,7 +166,8 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
 int CoapPDU::reset() {
 	// pdu
 	memset(_pdu,0x00,_bufferLength);
-	_pduLength = 0;
+	// packet always has at least a header
+	_pduLength = 4;
 
 	// options
 	_numOptions = 0;
@@ -173,6 +175,7 @@ int CoapPDU::reset() {
 	// payload
 	_payloadPointer = NULL;
 	_payloadLength = 0;
+	return 0;
 }
 
 /// Validates a PDU constructed using an external buffer.
@@ -371,6 +374,15 @@ uint8_t* CoapPDU::getPDUPointer() {
 /// Shorthand function for setting a resource URI.
 /**
  * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
+ * The options are added to the PDU.
+ * 
+ * XXX explain formatting
+ * \note This uses an internal buffer of 16 bytes to manipulate strings. The internal buffer will be
+ * expanded dynamically if necessary (path component longer than 16 bytes). The internal buffer will
+ * be freed when the function returns.
+ * 
+ * \param uri The uri to parse.
+ * \param urilen The length of the uri to parse.
  *
  * \return 1 on success, 0 on failure.
  */
@@ -390,11 +402,10 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		return 0;
 	}
 
-
 	// local vars
 	char *startP=uri,*endP=NULL;
 	int oLen = 0;
-	int bufSpace = 32;
+	int bufSpace = 16;
 	char *uriBuf = (char*)malloc(bufSpace*sizeof(char));
 	if(uriBuf==NULL) {
 		DBG("Error allocating temporary memory.");
@@ -547,10 +558,9 @@ int CoapPDU::hasURI() {
 	return 1;
 }
 
-
 /**
  * Sets the CoAP version.
- * @version CoAP version between 0 and 3.
+ * \param version CoAP version between 0 and 3.
  */
 int CoapPDU::setVersion(uint8_t version) {
 	if(version>3) {
@@ -569,7 +579,6 @@ int CoapPDU::setVersion(uint8_t version) {
 uint8_t CoapPDU::getVersion() {
 	return (_pdu[0]&0xC0)>>6;
 }
-
 
 /**
  * Sets the type of this coap PDU. 
@@ -633,12 +642,24 @@ int CoapPDU::setToken(uint8_t *token, uint8_t tokenLength) {
 	// whether pdu is now bigger or smaller
 	if(_pduLength>oldPDULength) {
 		// new PDU is bigger, need to allocate space for new PDU
-		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-		if(newMemory==NULL) {
-			// malloc failed
-			return 1;
+		if(!_constructedFromBuffer) {
+			uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+			if(newMemory==NULL) {
+				// malloc failed
+				DBG("Failed to allocate memory for token");
+				_pduLength = oldPDULength;
+				return 1;
+			}
+			_pdu = newMemory;
+			_bufferLength = _pduLength;
+		} else {
+			// constructed from buffer, check space
+			if(_pduLength>_bufferLength) {
+				DBG("Buffer too small to contain token, needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
+				_pduLength = oldPDULength;
+				return 1;
+			}
 		}
-		_pdu = newMemory;
 
 		// and then shift everything after token up to end of new PDU
 		// memory overlaps so do this manually so to avoid additional mallocs
@@ -662,12 +683,17 @@ int CoapPDU::setToken(uint8_t *token, uint8_t tokenLength) {
 	int shiftAmount = oldPDULength-oldTokenLength-COAP_HDR_SIZE;
 	shiftPDUDown(startLocation,shiftOffset,shiftAmount);
 	// then reduce size of buffer
-	uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-	if(newMemory==NULL) {
-		// malloc failed, PDU in inconsistent state
-		return 1;
+	if(!_constructedFromBuffer) {
+		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+		if(newMemory==NULL) {
+			// malloc failed, PDU in inconsistent state
+			DBG("Failed to shrink PDU for new token. PDU probably broken");
+			return 1;
+		}
+		_pdu = newMemory;
+		_bufferLength = _pduLength;
 	}
-	_pdu = newMemory;
+
 	// and officially set the new tokenLength
 	setTokenLength(tokenLength);
 	return 0;
@@ -697,11 +723,13 @@ void CoapPDU::shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount) 
 	}
 }
 
+/// Sets the CoAP response code
 void CoapPDU::setCode(CoapPDU::Code code) {
 	_pdu[1] = code;
 	// there is a limited set of response codes
 }
 
+/// Gets the CoAP response code
 CoapPDU::Code CoapPDU::getCode() {
 	return (CoapPDU::Code)_pdu[1];
 }
@@ -728,6 +756,10 @@ uint16_t CoapPDU::getMessageID() {
 
 void CoapPDU::printHuman() {
 	INFO("__________________");
+	if(_constructedFromBuffer) {
+		INFO("PDU was constructed from buffer of %d bytes",_bufferLength);
+	}
+	INFO("PDU is %d bytes long",_pduLength);
 	INFO("CoAP Version: %d",getVersion());
 	INFOX("Message Type: ");
 	switch(getType()) {
@@ -1285,20 +1317,33 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 		_maxAddedOptionNumber = insertedOptionNumber;
 
 		// set new PDU length and allocate space for extra option
+		int oldPDULength = _pduLength;
 		_pduLength += optionLength;
-		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-		if(newMemory==NULL) {
-			// malloc failed
-			return 1;
+		if(!_constructedFromBuffer) {
+			uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+			if(newMemory==NULL) {
+				DBG("Failed to allocate memory for option.");
+				_pduLength = oldPDULength;
+				// malloc failed
+				return 1;
+			}
+			_pdu = newMemory;
+			_bufferLength = _pduLength;
+		} else {
+			// constructed from buffer, check space
+			if(_pduLength>_bufferLength) {
+				DBG("Buffer too small for new option: needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
+				_pduLength = oldPDULength;
+				return 1;
+			}
 		}
-		_pdu = newMemory;
 		
 		// insert option at position
 		insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
 		_numOptions++;
 		return 0;
 	}
-	// XXX could do 0xFF pdu payload case for changing of dynamically allocated application space SDUs
+	// XXX could do 0xFF pdu payload case for changing of dynamically allocated application space SDUs < yeah, if you're insane
 
 	// the next option might (probably) needs it's delta changing
 	// I want to take this into account when allocating space for the new
@@ -1313,25 +1358,35 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
 
 	// create space for new option, including adjustment space for option delta
-	#ifdef DEBUG
-	printBin();
-	#endif
+	DBG_PDU();
 	DBG("Creating space");
 	int mallocLength = optionLength+optionDeltaAdjustment;
+	int oldPDULength = _pduLength;
 	_pduLength += mallocLength;
-	uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-	if(newMemory==NULL) { return 1; }
-	_pdu = newMemory;
+
+	if(!_constructedFromBuffer) {
+		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+		if(newMemory==NULL) {
+			DBG("Failed to allocate memory for option");
+			_pduLength = oldPDULength;
+			return 1; 
+		}
+		_pdu = newMemory;
+		_bufferLength = _pduLength;
+	} else {
+		// constructed from buffer, check space
+		if(_pduLength>_bufferLength) {
+			DBG("Buffer too small to contain option, needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
+			_pduLength = oldPDULength;
+			return 1;
+		}
+	}
 
 	// move remainder of PDU data up to create hole for new option
-	#ifdef DEBUG
-	printBin();
-	#endif
+	DBG_PDU();
 	DBG("Shifting PDU.");
 	shiftPDUUp(mallocLength,_pduLength-(insertionPosition+mallocLength));
-	#ifdef DEBUG
-	printBin();
-	#endif
+	DBG_PDU();
 
 	// adjust option delta bytes of following option
 	// move the option header to the correct position
@@ -1360,42 +1415,81 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	DBGLX("Inserting new option...");
 	insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
 	DBGX("done\r\n");
-	#ifdef DEBUG
-	printBin();
-	#endif
+	DBG_PDU();
 
 	// done, mark it with B! 
 	return 0;
 }
 
-// XXX add a no-malloc option later so that people can pass a buffer in to use
-// for now, just use this buffer
 uint8_t* CoapPDU::mallocPayload(int len) {
-	// XXX allow to make bigger
+	DBG("Entering mallocPayload");
+	// sanity checks
 	if(len==0) {
 		DBG("Cannot allocate a zero length payload");
 		return NULL;
 	}
 
-	// make space for payload (and payload marker)
-	int newLen = _pduLength+len+1;
-	uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
-	if(newPDU==NULL) {
-		DBG("Cannot allocate space for payload");
-		return NULL;
+	// further sanity
+	if(len==_payloadLength) {
+		DBG("Space for payload of specified length already exists");
+		if(_payloadPointer==NULL) {
+			DBG("Garbage PDU. Payload length is %d, but existing _payloadPointer NULL",_payloadLength);
+			return NULL;
+		}
+		return _payloadPointer;
 	}
-	_pdu = newPDU;
-	// set payload marker
-	_pdu[_pduLength] = 0xFF;
-	// update payload pointer
-	_payloadPointer = &_pdu[_pduLength+1];
-	_payloadLength = len;
+
+	DBG("_bufferLength: %d, _pduLength: %d, _payloadLength: %d",_bufferLength,_pduLength,_payloadLength);
+
+	// might be making payload bigger (including bigger than 0) or smaller
+	int markerSpace = 1;
+	int payloadSpace = len;
+	// is this a resizing?
+	if(_payloadLength!=0) {
+		// marker already exists
+		markerSpace = 0;
+		// compute new payload length (can be negative if shrinking payload)
+		payloadSpace = len-_payloadLength;
+	}
+
+	// make space for payload (and payload marker if necessary)
+	int newLen = _pduLength+payloadSpace+markerSpace;
+	if(!_constructedFromBuffer) {
+		uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
+		if(newPDU==NULL) {
+			DBG("Cannot allocate (or shrink) space for payload");
+			return NULL;
+		}
+		_pdu = newPDU;
+		_bufferLength = newLen;
+	} else {
+		// constructed from buffer, check space
+		DBG("newLen: %d, _bufferLength: %d",newLen,_bufferLength);
+		if(newLen>_bufferLength) {
+			DBG("Buffer too small to contain desired payload, needed %d, got %d.",newLen-_pduLength,_bufferLength-_pduLength);
+			return NULL;
+		}
+	}
+
+	// deal with fresh allocation case separately
+	if(_payloadPointer==NULL) {
+		// set payload marker
+		_pdu[_pduLength] = 0xFF;
+		// payload at end of old PDU
+		_payloadPointer = &_pdu[_pduLength+1];
+		_pduLength = newLen;
+		_payloadLength = len;
+		return _payloadPointer;
+	}
+
+	// otherwise, just adjust length of PDU
 	_pduLength = newLen;
+	_payloadLength = len;
+	DBG("Leaving mallocPayload");
 	return _payloadPointer;
 }
 
-// the assumption here is that no payload has been allocated
-// so this will always go at the end
+/// Set the payload based on a passed buffer.
 int CoapPDU::setPayload(uint8_t *payload, int len) {
 	if(payload==NULL) {
 		DBG("NULL payload pointer.");
