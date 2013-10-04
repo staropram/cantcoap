@@ -5,7 +5,6 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 
 ```C++
 	CoapPDU *pdu = new CoapPDU();
-	pdu->setVersion(1);
 	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 	pdu->setCode(CoapPDU::COAP_GET);
 	pdu->setToken((uint8_t*)"\3\2\1\0",4);
@@ -57,7 +56,6 @@ $sudo zypper install libcunit-dev
 
 $sudo zypper install cunit-devel
 
-
 #### BSD 
 
 Probably some variation, but for FreeBSD, CUnit is in the ports collection at /usr/ports/devel/cunit.
@@ -66,7 +64,7 @@ Probably some variation, but for FreeBSD, CUnit is in the ports collection at /u
 
 Type make (Note, build with GNU make on BSD).
 
-#Long description
+# Long description
 
 This is a CoAP implementation with a focus on simplicity. The library only provides PDU construction and de-construction.
 The user is expected to deal with retransmissions, timeouts, and message ID matching themselves. This isn’t as arduous as it sounds and makes a lot more sense on a constrained device.
@@ -77,3 +75,95 @@ Since CoAP recommends you only send one packet at at time, this means you only n
 Furthermore, the timers and interrupt processes between different embedded processor architectures, vary quite a bit. So it often makes sense to write the packet sending processes yourself.
 
 Finally, you might be sending the packets over odd transport bearers such as a SMS or a simple radio bearer. In which case, it’s easiest to deal with buffers. If I built retransmission handlers, they’d all be UDP/IP specific and would bloat the code.
+
+# Examples
+
+## Construction
+
+There are a couple of different ways to construct a PDU depending on whether you want the library to allocate memory for you, or whether you have an external buffer you want to use. You can also re-purpose existing objects.
+
+### Using a managed object
+
+The simplest usage scenario hands control of memory allocation to the library:
+
+```C++
+CoapPDU *pdu = new CoapPDU();
+...
+pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+pdu->setCode(CoapPDU::COAP_GET);
+pdu->addOption(11,5,(uint8_t*)"hello");
+pdu->addOption(11,5,(uint8_t*)"there");
+pdu->addOption(11,6,(uint8_t*)"server");
+```
+In this case you just call the default constructor. That's it. The library handles memory from there-on out. For example, when adding each of those options, the library will realloc the pdu to accomodate space for them. It will also shrink the PDU if something changes (like the token length) so that it always uses the minimum amount of memory.
+
+When you free the PDU, all data including the buffer is deleted. The PDU can also be reused as shown below.
+
+### Using an external buffer for memory
+
+There are two obvious reasons why you would do this:
+
+1. The buffer contains a CoAP PDU and you want to access the data in the PDU.
+2. Buffers cost space and allocating memory consumes processor resources. On embedded targets it is often simpler to reuse buffers where possible.
+
+The first instance is a special case and requires some extra work. Just using an external buffer is as simple as follows:
+
+```C++
+uint8_t *buffer[100];
+CoapPDU *pdu = new CoapPDU((uint8_t*)buffer,100,0);
+...
+pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+pdu->setCode(CoapPDU::COAP_GET);
+pdu->addOption(11,5,(uint8_t*)"hello");
+pdu->addOption(11,5,(uint8_t*)"there");
+pdu->addOption(11,6,(uint8_t*)"server");
+```
+
+The PDU is constructed as normal except that the memory of your buffer is used instead of allocated memory.
+
+A call such as this:
+
+```C++
+pdu->addOption(11,5,(uint8_t*)"hello");
+```
+
+Will fail if there is no space left in the buffer.
+
+When you delete the object, the buffer is not freed. 
+
+### Reusing an existing object
+
+Regardless of whether you constructed a PDU using either of the above methods, you can always reuse it:
+
+```C++
+pdu->reset(); 
+...
+pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+pdu->setCode(CoapPDU::COAP_GET);
+pdu->addOption(11,5,(uint8_t*)"hello");
+pdu->addOption(11,5,(uint8_t*)"there");
+pdu->addOption(11,6,(uint8_t*)"server");
+```
+
+The only difference is that if the PDU was initially constructed using managed-memory, then it will continue to have managed-memory. Whereas if the PDU was constructed with an external buffer, then you are limited in space by the size of the buffer you used.
+
+## Receving CoAP packets over a network or something
+
+In this case you have a CoAP PDU in a buffer and want to read it:
+
+	
+```C++
+uint8_t *buffer[100];
+int ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
+CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret,100);
+if(recvPDU->validate()) {
+	recvPDU->printHuman();
+	// do your work
+}
+```
+
+You must call CoapPDU::validate() and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.
+
+Note that the constructor is just a shorthand for the external-buffer-constructor explained above.
+
+You can reuse this object by resetting it as above.
