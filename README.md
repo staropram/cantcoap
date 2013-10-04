@@ -62,7 +62,9 @@ Probably some variation, but for FreeBSD, CUnit is in the ports collection at /u
 
 ## Build
 
-Type make (Note, build with GNU make on BSD).
+Type make (Note, build with GNU make on BSD). This builds the test framework too. Type ./test to feel some misplaced confidence.
+
+There is also an example client and server made. The server is supposed to work with the website coap.me, but isn't finished.
 
 # Long description
 
