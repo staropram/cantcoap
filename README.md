@@ -67,14 +67,16 @@ Type make (Note, build with GNU make on BSD).
 # Long description
 
 This is a CoAP implementation with a focus on simplicity. The library only provides PDU construction and de-construction.
+
 The user is expected to deal with retransmissions, timeouts, and message ID matching themselves. This isn’t as arduous as it sounds and makes a lot more sense on a constrained device.
+
 Imagine for example a simple microcontroller sensor that only reports readings once every 15 minutes, and only sends a few packets each time. Do you really need a complicated framework to deal with acknowledgements and re-transmissions?
 
-Since CoAP recommends you only send one packet at at time, this means you only need to keep track of one on-going transaction at a time. I think you’re capable of doing the retransmission logic in a few lines of code.
+Since CoAP recommends you only send one packet at at time, this means you only need to keep track of one on-going transaction at a time. Yeah... I think you’re capable of this.
 
 Furthermore, the timers and interrupt processes between different embedded processor architectures, vary quite a bit. So it often makes sense to write the packet sending processes yourself.
 
-Finally, you might be sending the packets over odd transport bearers such as a SMS or a simple radio bearer. In which case, it’s easiest to deal with buffers. If I built retransmission handlers, they’d all be UDP/IP specific and would bloat the code.
+Finally, you might be sending the packets over odd transport bearers such as a SMS (woah dude, that's just totally wild) or a simple radio bearer. In which case, it’s easiest to deal with buffers. If I built retransmission handlers, they’d all be UDP/IP specific and would bloat the code for no reason.
 
 # Examples
 
@@ -129,7 +131,7 @@ pdu->addOption(11,5,(uint8_t*)"hello");
 
 Will fail if there is no space left in the buffer.
 
-When you delete the object, the buffer is not freed. 
+When you delete the object, the buffer is not freed. Hey, it's your buffer mannn!
 
 ### Reusing an existing object
 
@@ -149,7 +151,7 @@ The only difference is that if the PDU was initially constructed using managed-m
 
 ## Receving CoAP packets over a network or something
 
-In this case you have a CoAP PDU in a buffer and want to read it:
+In this case you have a CoAP PDU in a buffer you just gobbled from a socket and want to read it:
 
 	
 ```C++
@@ -164,6 +166,11 @@ if(recvPDU->validate()) {
 
 You must call CoapPDU::validate() and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.
 
-Note that the constructor is just a shorthand for the external-buffer-constructor explained above.
+Note that the constructor is just a shorthand for the external-buffer-constructor explained above, and you can use the long form if you want. For example. you might want to use the long form if you have a buffer bigger than the PDU and you expect to reuse it.
 
 You can reuse this object by resetting it as above.
+
+## Setting options
+
+
+
