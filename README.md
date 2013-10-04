@@ -15,6 +15,17 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 	// send packet 
 	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
 ```
+...
+
+```C++
+	// receive packet
+	ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
+	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
+	if(recvPDU->validate()) {
+		recvPDU->getURI(uriBuffer,URI_BUF_LEN,&recvURILen);
+		...
+	}
+```
 
 # Compilation
 
