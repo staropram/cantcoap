@@ -1167,6 +1167,8 @@ int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNu
 	// zero this for safety
 	*prevOptionNumber = 0x00;
 
+	DBG("_pduLength: %d",_pduLength);
+
 	// if option is bigger than any currently stored, it goes at the end
 	// this includes the case that no option has yet been added
 	if( (optionNumber >= _maxAddedOptionNumber) || (_pduLength == (COAP_HDR_SIZE+getTokenLength())) ) {
