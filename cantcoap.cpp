@@ -40,17 +40,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cantcoap.h"
 #include "arpa/inet.h"
 
-/// Memory-managed constructor. Buffer for PDU is dynamically sized and allocated by class.
+/// Memory-managed constructor. Buffer for PDU is dynamically sized and allocated by the object.
 /**
- * By using this constructor, your intention is that the CoapPDU class will allocate space for the PDU.
- * Contrast this with the parameterized constructors, which allow you to reuse an external buffer.
+ * When using this constructor, the CoapPDU class will allocate space for the PDU.
+ * Contrast this with the parameterized constructors, which allow the use of an external buffer.
  *
  * Note, the PDU container and space can be reused by issuing a CoapPDU::reset(). If the new PDU exceeds the 
  * space of the previously allocated memory, then further memory will be dynamically allocated.
  *
- * Deleting the object will free the Object container and all dynamic memory allocated.
+ * Deleting the object will free the Object container and all dynamically allocated memory.
  *
- * \sa CoapPDU::CoapPDU(uint8_t *pdu, int pduLength), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength)
+ * \note It would have been nice to use something like UDP_CORK or MSG_MORE, to allow separate buffers 
+ * for token, options, and payload but these FLAGS aren't implemented for UDP in LwIP so stuck with one buffer for now.
+ *
+ * CoAP version defaults to 1.
+ *
+ * \sa CoapPDU::CoapPDU(uint8_t *pdu, int pduLength), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength), 
+ * CoapPDU:CoapPDU()~
+ *
  */
 CoapPDU::CoapPDU() {
 	// pdu
@@ -68,23 +75,22 @@ CoapPDU::CoapPDU() {
 
 	_constructedFromBuffer = 0;
 
-	// Note
-	// It would have been nice to use something like UDP_CORK or MSG_MORE 
-	// but these aren't implemented for UDP in LwIP. So another option would 
-	// be to re-arrange memory every time an option is added out-of-order
-	// this would be a ballache however, so for now, we'll just dump this to
-	// a PDU at the end
+	setVersion(1);
 }
 
 /// Construct a PDU using an external buffer. No copy of the buffer is made.
 /**
- * This constructor is normally used where a PDU has been received over the network, and its length is known.
- * In this case the CoapPDU object is probably used as temporary container to access member values.
+ * This constructor is normally used where a PDU has been received over the network, and it's length is known.
+ * In this case the CoapPDU object is probably going to be used as a temporary container to access member values.
  *
- * It is assumed that \pduLength is the length of the actual CoAP PDU, contrast this with 
- * CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) which allows the buffer to be larger than the PDU.
+ * It is assumed that \b pduLength is the length of the actual CoAP PDU, and consequently the buffer will also be this size,
+ * contrast this with CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) which allows the buffer to 
+ * be larger than the PDU.
  *
  * A PDU constructed in this manner must be validated with CoapPDU::validate() before the member variables will be accessible.
+ *
+ * \warning The validation call parses the PDU structure to set some internal parameters. If you do
+ * not validate the PDU, then the behaviour of member access functions will be undefined.
  * 
  * The buffer can be reused by issuing a CoapPDU::reset() but the class will not change the size of the buffer. If the
  * newly constructed PDU exceeds the size of the buffer, the function called (for example CoapPDU::addOption) will fail.
@@ -92,12 +98,12 @@ CoapPDU::CoapPDU() {
  * Deleting this object will only delete the Object container and will not delete the PDU buffer.
  *
  * @param pdu A pointer to an array of bytes which comprise the CoAP PDU
- * @param pduLength The length of the CoAP PDU pointed to by \a pdu
+ * @param pduLength The length of the CoAP PDU pointed to by \b pdu
 
- * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength)
+ * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength)
  */
 CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) : CoapPDU(pdu,pduLength,pduLength) {
-	// delegated
+	// delegated to CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength)
 }
 
 /// Construct object from external buffer that may be larger than actual PDU.
@@ -108,6 +114,16 @@ CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) : CoapPDU(pdu,pduLength,pduLength)
  * 
  * If an actual CoAP PDU is passed in the buffer, \b pduLength should match its length. CoapPDU::validate() must
  * be called to initiate the object before member functions can be used.
+ *
+ * A PDU constructed in this manner must be validated with CoapPDU::validate() before the member variables will be accessible.
+ *
+ * \warning The validation call parses the PDU structure to set some internal parameters. If you do
+ * not validate the PDU, then the behaviour of member access functions will be undefined.
+ * 
+ * The buffer can be reused by issuing a CoapPDU::reset() but the class will not change the size of the buffer. If the
+ * newly constructed PDU exceeds the size of the buffer, the function called (for example CoapPDU::addOption) will fail.
+ *
+ * Deleting this object will only delete the Object container and will not delete the PDU buffer.
  *
  * \param buffer A buffer which either contains a CoAP PDU or is intended to be used to construct one.
  * \param bufferLength The length of the buffer
@@ -129,6 +145,7 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
 		_pduLength = 4;
 		// make sure header is zeroed
 		_pdu[0] = 0x00; _pdu[1] = 0x00; _pdu[2] = 0x00; _pdu[3] = 0x00;
+		setVersion(1);
 	} else {
 		_pduLength = pduLength;
 	}
@@ -152,7 +169,8 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
  * Note that the space available will depend on how the CoapPDU was originally constructed:
  * -# CoapPDU::CoapPDU()
  *
- * 	Space is allocated as needed on demand, limited only by the OS/environment.
+ * 	Available space initially be \b _pduLength. But further space will be allocated as needed on demand, 
+ *    limited only by the OS/environment.
  *
  * -# CoapPDU::CoapPDU(uint8_t *pdu, int pduLength)
  *
@@ -161,6 +179,7 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
  * -# CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength)
  *
  *		Space is limited by the variable \b bufferLength. The PDU cannot exceed \b bufferLength bytes.
+ *
  * \return 0 on success, 1 on failure.
  */
 int CoapPDU::reset() {
@@ -193,6 +212,7 @@ int CoapPDU::validate() {
 		DBG("PDU has to be a minimum of 4 bytes. This: %d bytes",_pduLength);
 		return 0;
 	}
+
 	// check header
 	//   0                   1                   2                   3
    //  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -343,9 +363,9 @@ int CoapPDU::validate() {
 	return 1;
 }
 
-/// Destructor. Does not free buffer if external.
+/// Destructor. Does not free buffer if constructor passed an external buffer.
 /**
- * The destructor acts differently, depending on how the object was initially constructed (from buffer or not).
+ * The destructor acts differently, depending on how the object was initially constructed (from buffer or not):
  *
  * -# CoapPDU::CoapPDU()
  *
@@ -376,10 +396,11 @@ uint8_t* CoapPDU::getPDUPointer() {
  * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
  * The options are added to the PDU.
  * 
- * XXX explain formatting
+ * At present queries are not handled. TODO Implement queries.
+ *
  * \note This uses an internal buffer of 16 bytes to manipulate strings. The internal buffer will be
  * expanded dynamically if necessary (path component longer than 16 bytes). The internal buffer will
- * be freed when the function returns.
+ * be freed before the function returns.
  * 
  * \param uri The uri to parse.
  * \param urilen The length of the uri to parse.
@@ -464,6 +485,16 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	return 0;
 }
 
+/// Concatenates any URI_PATH elements into a single string.
+/**
+ * Parses the PDU options and extracts all URI_PATH elements, concatenating them into a single string with slash separators.
+ * 
+ * \param dst Buffer into which to copy the concatenated path elements.
+ * \param dstlen Length of buffer.
+ * \param outLen Pointer to integer, into which URI length will be placed.
+ *
+ * \return 0 on success, 1 on failure. \b outLen will contain the length of the concatenated elements.
+ */
 int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 	if(outLen==NULL) {
 		DBG("Output length pointer is NULL");
@@ -554,13 +585,10 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 	return 0;
 }
 
-int CoapPDU::hasURI() {
-	return 1;
-}
-
+/// Sets the CoAP version.
 /**
- * Sets the CoAP version.
  * \param version CoAP version between 0 and 3.
+ * \return 0 on success, 1 on failure.
  */
 int CoapPDU::setVersion(uint8_t version) {
 	if(version>3) {
@@ -581,19 +609,29 @@ uint8_t CoapPDU::getVersion() {
 }
 
 /**
- * Sets the type of this coap PDU. 
- * @mt The type, one of: COAP_CONFIRMABLE, COAP_NON_CONFIRMABLE, COAP_ACKNOWLEDGEMENT, COAP_RESET.
+ * Sets the type of this CoAP PDU. 
+ * \param mt The type, one of: 
+ * - COAP_CONFIRMABLE
+ * - COAP_NON_CONFIRMABLE
+ * - COAP_ACKNOWLEDGEMENT
+ * - COAP_RESET.
  */
 void CoapPDU::setType(CoapPDU::Type mt) {
 	_pdu[0] &= 0xCF;
 	_pdu[0] |= mt;
 }
 
+/// Returns the type of the PDU.
 CoapPDU::Type CoapPDU::getType() {
 	return (CoapPDU::Type)(_pdu[0]&0x30);
 }
 
 
+/// Set the token length.
+/**
+ * \param tokenLength The length of the token in bytes, between 0 and 8.
+ * \return 0 on success, 1 on failure.
+ */
 int CoapPDU::setTokenLength(uint8_t tokenLength) {
 	if(tokenLength>8)
 		return 1;
@@ -603,10 +641,12 @@ int CoapPDU::setTokenLength(uint8_t tokenLength) {
 	return 0;
 }
 
+/// Returns the token length.
 int CoapPDU::getTokenLength() {
 	return _pdu[0] & 0x0F;
 }
 
+/// Returns a pointer to the PDU token.
 uint8_t* CoapPDU::getTokenPointer() {
 	if(getTokenLength()==0) {
 		return NULL;
@@ -614,6 +654,13 @@ uint8_t* CoapPDU::getTokenPointer() {
 	return &_pdu[4];
 }
 
+/// Set the PDU token to the supplied byte sequence.
+/**
+ * This sets the PDU token to \b token and sets the token length to \b tokenLength.
+ * \param token A sequence of bytes representing the token.
+ * \param tokenLength The length of the byte sequence.
+ * \return 0 on success, 1 on failure.
+ */
 int CoapPDU::setToken(uint8_t *token, uint8_t tokenLength) {
 	DBG("Setting token");
 	if(token==NULL) {
@@ -699,30 +746,6 @@ int CoapPDU::setToken(uint8_t *token, uint8_t tokenLength) {
 	return 0;
 }
 
-// this shifts bytes up to the top of the PDU to create space
-// the destination always begins at the end of allocated memory
-void CoapPDU::shiftPDUUp(int shiftOffset, int shiftAmount) {
-	DBG("shiftOffset: %d, shiftAmount: %d",shiftOffset,shiftAmount);
-	int destPointer = _pduLength-1;
-	int srcPointer  = destPointer-shiftOffset;
-	while(shiftAmount--) {
-		_pdu[destPointer] = _pdu[srcPointer];
-		destPointer--;
-		srcPointer--;
-	}
-}
-
-// shift bytes from 
-void CoapPDU::shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount) {
-	DBG("startLocation: %d, shiftOffset: %d, shiftAmount: %d",startLocation,shiftOffset,shiftAmount);
-	int srcPointer = startLocation+shiftOffset;
-	while(shiftAmount--) {
-		_pdu[startLocation] = _pdu[srcPointer];
-		startLocation++;
-		srcPointer++;
-	}
-}
-
 /// Sets the CoAP response code
 void CoapPDU::setCode(CoapPDU::Code code) {
 	_pdu[1] = code;
@@ -734,6 +757,11 @@ CoapPDU::Code CoapPDU::getCode() {
 	return (CoapPDU::Code)_pdu[1];
 }
 
+/// Set messageID to the supplied value.
+/**
+ * \param messageID A 16bit message id.
+ * \return 0 on success, 1 on failure.
+ */
 int CoapPDU::setMessageID(uint16_t messageID) {
 	// message ID is stored in network byte order
 	uint16_t networkOrder = htons(messageID);
@@ -745,6 +773,7 @@ int CoapPDU::setMessageID(uint16_t messageID) {
 	return 0;
 }
 
+/// Returns the 16 bit message ID of the PDU.
 uint16_t CoapPDU::getMessageID() {
 	// mesasge ID is stored in network byteorder
 	uint16_t networkOrder = 0x0000;
@@ -754,6 +783,459 @@ uint16_t CoapPDU::getMessageID() {
 	return ntohs(networkOrder);
 }
 
+/// Returns the length of the PDU.
+int CoapPDU::getPDULength() {
+	return _pduLength;
+}
+
+int CoapPDU::getNumOptions() {
+	return _numOptions;
+}
+
+
+/**
+ * This returns the options as a sequence of structs.
+ */
+CoapPDU::CoapOption* CoapPDU::getOptions() {
+	DBG("getOptions() called, %d options.",_numOptions);
+
+	uint16_t optionDelta =0, optionNumber = 0, optionValueLength = 0;
+	int totalLength = 0;
+
+	if(_numOptions==0) {
+		return NULL;
+	}
+
+	// malloc space for options
+	CoapOption *options = (CoapOption*)malloc(_numOptions*sizeof(CoapOption));
+
+	// first option occurs after token
+	int optionPos = COAP_HDR_SIZE + getTokenLength();
+
+	// walk over options and record information
+	for(int i=0; i<_numOptions; i++) {
+		// extract option details
+		optionDelta = getOptionDelta(&_pdu[optionPos]);
+		optionNumber += optionDelta;
+		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
+		// compute total length
+		totalLength = 1; // mandatory header
+		totalLength += computeExtraBytes(optionDelta);
+		totalLength += computeExtraBytes(optionValueLength);
+		totalLength += optionValueLength;
+		// record option details
+		options[i].optionNumber = optionNumber;
+		options[i].optionDelta = optionDelta;
+		options[i].optionValueLength = optionValueLength;
+		options[i].totalLength = totalLength;
+		options[i].optionPointer = &_pdu[optionPos];
+		options[i].optionValuePointer = &_pdu[optionPos+totalLength-optionValueLength];
+		// move to next option
+		optionPos += totalLength; 
+	}
+
+	return options;
+}
+
+/// Add an option to the PDU.
+/**
+ * Unlike other implementations, options can be added in any order, and in-memory manipulation will be
+ * performed to ensure the correct ordering of options (they use a delta encoding of option numbers).
+ * Re-ordering memory like this incurs a small performance cost, so if you care about this, then you
+ * might want to add options in ascending order of option number.
+ * \param optionNumber The number of the option, see the enum CoapPDU::Option for shorthand notations.
+ * \param optionLength The length of the option payload in bytes.
+ * \param optionValue A pointer to the byte sequence that is the option payload (bytes will be copied).
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength, uint8_t *optionValue) {
+	// this inserts the option in memory, and re-computes the deltas accordingly
+	// prevOption <-- insertionPosition
+	// nextOption
+
+	// find insertion location and previous option number
+	uint16_t prevOptionNumber = 0; // option number of option before insertion point
+	int insertionPosition = findInsertionPosition(insertedOptionNumber,&prevOptionNumber);
+	DBG("inserting option at position %d, after option with number: %hu",insertionPosition,prevOptionNumber);
+
+	// compute option delta length
+	uint16_t optionDelta = insertedOptionNumber-prevOptionNumber;
+	uint8_t extraDeltaBytes = computeExtraBytes(optionDelta);
+
+	// compute option length length
+	uint16_t extraLengthBytes = computeExtraBytes(optionValueLength);
+
+	// compute total length of option
+	uint16_t optionLength = COAP_OPTION_HDR_BYTE + extraDeltaBytes + extraLengthBytes + optionValueLength;
+
+	// if this is at the end of the PDU, job is done, just malloc and insert
+	if(insertionPosition==_pduLength) {
+		DBG("Inserting at end of PDU");
+		// optionNumber must be biggest added
+		_maxAddedOptionNumber = insertedOptionNumber;
+
+		// set new PDU length and allocate space for extra option
+		int oldPDULength = _pduLength;
+		_pduLength += optionLength;
+		if(!_constructedFromBuffer) {
+			uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+			if(newMemory==NULL) {
+				DBG("Failed to allocate memory for option.");
+				_pduLength = oldPDULength;
+				// malloc failed
+				return 1;
+			}
+			_pdu = newMemory;
+			_bufferLength = _pduLength;
+		} else {
+			// constructed from buffer, check space
+			if(_pduLength>_bufferLength) {
+				DBG("Buffer too small for new option: needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
+				_pduLength = oldPDULength;
+				return 1;
+			}
+		}
+		
+		// insert option at position
+		insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
+		_numOptions++;
+		return 0;
+	}
+	// XXX could do 0xFF pdu payload case for changing of dynamically allocated application space SDUs < yeah, if you're insane
+
+	// the next option might (probably) needs it's delta changing
+	// I want to take this into account when allocating space for the new
+	// option, to avoid having to do two mallocs, first get info about this option
+	int nextOptionDelta = getOptionDelta(&_pdu[insertionPosition]);
+	int nextOptionNumber = prevOptionNumber + nextOptionDelta;
+	int nextOptionDeltaBytes = computeExtraBytes(nextOptionDelta);
+	// recompute option delta, relative to inserted option
+	int newNextOptionDelta = nextOptionNumber-insertedOptionNumber;
+	int newNextOptionDeltaBytes = computeExtraBytes(newNextOptionDelta);
+	// determine adjustment
+	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
+
+	// create space for new option, including adjustment space for option delta
+	DBG_PDU();
+	DBG("Creating space");
+	int mallocLength = optionLength+optionDeltaAdjustment;
+	int oldPDULength = _pduLength;
+	_pduLength += mallocLength;
+
+	if(!_constructedFromBuffer) {
+		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
+		if(newMemory==NULL) {
+			DBG("Failed to allocate memory for option");
+			_pduLength = oldPDULength;
+			return 1; 
+		}
+		_pdu = newMemory;
+		_bufferLength = _pduLength;
+	} else {
+		// constructed from buffer, check space
+		if(_pduLength>_bufferLength) {
+			DBG("Buffer too small to contain option, needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
+			_pduLength = oldPDULength;
+			return 1;
+		}
+	}
+
+	// move remainder of PDU data up to create hole for new option
+	DBG_PDU();
+	DBG("Shifting PDU.");
+	shiftPDUUp(mallocLength,_pduLength-(insertionPosition+mallocLength));
+	DBG_PDU();
+
+	// adjust option delta bytes of following option
+	// move the option header to the correct position
+	int nextHeaderPos = insertionPosition+mallocLength;
+	_pdu[nextHeaderPos-optionDeltaAdjustment] = _pdu[nextHeaderPos];
+	nextHeaderPos -= optionDeltaAdjustment;
+	// and set the new value
+	setOptionDelta(nextHeaderPos, newNextOptionDelta);
+
+	// new option shorter
+	// p p n n x x x x x
+	// p p n n x x x x x -
+	// p p - n n x x x x x
+	// p p - - n x x x x x
+	// p p o o n x x x x x
+
+	// new option longer
+	// p p n n x x x x x
+	// p p n n x x x x x - - -
+	// p p - - - n n x x x x x
+	// p p - - n n n x x x x x
+	// p p o o n n n x x x x x
+
+
+	// now insert the new option into the gap
+	DBGLX("Inserting new option...");
+	insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
+	DBGX("done\r\n");
+	DBG_PDU();
+
+	// done, mark it with B! 
+	return 0;
+}
+
+/// PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE
+/// PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE
+
+/// Moves a block of bytes to end of PDU from given offset.
+/**
+ * This moves the block of bytes _pdu[_pduLength-1-shiftOffset-shiftAmount] ... _pdu[_pduLength-1-shiftOffset]
+ * to the end of the PDU.
+ * \param shiftOffset End of block to move, relative to end of PDU (-1).
+ * \param shiftAmount Length of block to move.
+ */
+void CoapPDU::shiftPDUUp(int shiftOffset, int shiftAmount) {
+	DBG("shiftOffset: %d, shiftAmount: %d",shiftOffset,shiftAmount);
+	int destPointer = _pduLength-1;
+	int srcPointer  = destPointer-shiftOffset;
+	while(shiftAmount--) {
+		_pdu[destPointer] = _pdu[srcPointer];
+		destPointer--;
+		srcPointer--;
+	}
+}
+
+/// Moves a block of bytes down a specified number of steps. 
+/**
+ * Moves the block of bytes _pdu[startLocation+shiftOffset] ... _pdu[startLocation+shiftOffset+shiftAmount]
+ * down to \b startLocation.
+ * \param startLocation Index where to shift the block to.
+ * \param shiftOffset Where the block starts, relative to start index.
+ * \param shiftAmount Length of block to shift.
+ */
+void CoapPDU::shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount) {
+	DBG("startLocation: %d, shiftOffset: %d, shiftAmount: %d",startLocation,shiftOffset,shiftAmount);
+	int srcPointer = startLocation+shiftOffset;
+	while(shiftAmount--) {
+		_pdu[startLocation] = _pdu[srcPointer];
+		startLocation++;
+		srcPointer++;
+	}
+}
+
+/// Gets the payload length of an option.
+/**
+ * \param option Pointer to location of option in PDU.
+ * \return The 16 bit option-payload length.
+ */
+uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
+	uint16_t delta = (option[0] & 0xF0) >> 4;
+	uint16_t length = (option[0] & 0x0F);
+	// no extra bytes
+	if(length<13) {
+		return length;
+	}
+	
+	// extra bytes skip header
+	int offset = 1;
+	// skip extra option delta bytes
+	if(delta==13) {
+		offset++;
+	} else if(delta==14) {
+		offset+=2;
+	}
+
+	// process length
+	if(length==13) {
+		return (option[offset]+13);
+	} else {
+		// need to convert to host order
+		uint16_t networkOrder = 0x0000;
+		networkOrder |= option[offset++];
+		networkOrder <<= 8;
+		networkOrder |= option[offset];
+		uint16_t hostOrder = ntohs(networkOrder);
+		return hostOrder+269;
+	}
+
+}
+
+/// Gets the delta of an option.
+/**
+ * \param option Pointer to location of option in PDU.
+ * \return The 16 bit delta.
+ */
+uint16_t CoapPDU::getOptionDelta(uint8_t *option) {
+	uint16_t delta = (option[0] & 0xF0) >> 4;
+	if(delta<13) {
+		return delta;
+	} else if(delta==13) {
+		// single byte option delta
+		return (option[1]+13);
+	} else if(delta==14) {
+		// double byte option delta
+		// need to convert to host order
+		uint16_t networkOrder = 0x0000;
+		networkOrder |= option[1];
+		networkOrder <<= 8;
+		networkOrder |= option[2];
+		uint16_t hostOrder = ntohs(networkOrder);
+		return hostOrder+269;
+	} else {
+		// should only ever occur in payload marker
+		return delta;
+	}
+}
+
+/// Finds the insertion position in the current list of options for the specified option.
+/**
+ * \param optionNumber The option's number.
+ * \param prevOptionNumber A pointer to a uint16_t which will store the option number of the option previous
+ * to the insertion point.
+ * \return 0 on success, 1 on failure. \b prevOptionNumber will contain the option number of the option
+ * before the insertion position (for example 0 if no options have been inserted).
+ */
+int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNumber) {
+	// zero this for safety
+	*prevOptionNumber = 0x00;
+
+	DBG("_pduLength: %d",_pduLength);
+
+	// if option is bigger than any currently stored, it goes at the end
+	// this includes the case that no option has yet been added
+	if( (optionNumber >= _maxAddedOptionNumber) || (_pduLength == (COAP_HDR_SIZE+getTokenLength())) ) {
+		*prevOptionNumber = _maxAddedOptionNumber;
+		return _pduLength;
+	}
+
+	// otherwise walk over the options
+	int optionPos = COAP_HDR_SIZE + getTokenLength();
+	uint16_t optionDelta = 0, optionValueLength = 0;
+	uint16_t currentOptionNumber = 0;
+	while(optionPos<_pduLength && _pdu[optionPos]!=0xFF) {
+		optionDelta = getOptionDelta(&_pdu[optionPos]);
+		currentOptionNumber += optionDelta;
+		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
+		// test if this is insertion position
+		if(currentOptionNumber>optionNumber) {
+			return optionPos;
+		}
+		// keep track of the last valid option number
+		*prevOptionNumber = currentOptionNumber;
+		// move onto next option
+		optionPos += computeExtraBytes(optionDelta);
+		optionPos += computeExtraBytes(optionValueLength);
+		optionPos += optionValueLength;
+		optionPos++; // (for mandatory option header byte)
+	}
+	return optionPos;
+
+}
+
+/// CoAP uses a minimal-byte representation for length fields. This returns the number of bytes needed to represent a given length.
+int CoapPDU::computeExtraBytes(uint16_t n) {
+	if(n<13) {
+		return 0;
+	}
+
+	if(n<269) { 
+		return 1;
+	}
+	
+	return 2;
+}
+
+/// Set the option delta to the specified value.
+/** 
+ * This assumes space has been made for the option delta.
+ * \param optionPosition The index of the option in the PDU.
+ * \param optionDelta The option delta value to set.
+ */
+void CoapPDU::setOptionDelta(int optionPosition, uint16_t optionDelta) {
+	int headerStart = optionPosition;
+	// clear the old option delta bytes
+	_pdu[headerStart] &= 0x0F;
+
+	// set the option delta bytes
+	if(optionDelta<13) {
+		_pdu[headerStart] |= (optionDelta << 4);
+	} else if(optionDelta<269) {
+	   // 1 extra byte
+		_pdu[headerStart] |= 0xD0; // 13 in first nibble
+		_pdu[++optionPosition] &= 0x00;
+		_pdu[optionPosition] |= (optionDelta-13);
+	} else {
+		// 2 extra bytes, network byte order uint16_t
+		_pdu[headerStart] |= 0xE0; // 14 in first nibble
+		optionDelta = htons(optionDelta-269);
+		_pdu[++optionPosition] &= 0x00;
+		_pdu[optionPosition] |= (optionDelta >> 8);     // MSB
+		_pdu[++optionPosition] &= 0x00;
+		_pdu[optionPosition] |= (optionDelta & 0x00FF); // LSB
+	}
+}
+
+/// Insert an option in-memory at the specified location.
+/**
+ * This assumes that there is enough space at the location specified.
+ * \param insertionPosition Position in the PDU where the option should be placed.
+ * \param optionDelta The delta value for the option.
+ * \param optionValueLength The length of the option value.
+ * \param optionValue A pointer to the sequence of bytes representing the option value.
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::insertOption(
+	int insertionPosition,
+	uint16_t optionDelta, 
+	uint16_t optionValueLength,
+	uint8_t *optionValue) {
+
+	int headerStart = insertionPosition;
+
+	// clear old option header start
+	_pdu[headerStart] &= 0x00;
+
+	// set the option delta bytes
+	if(optionDelta<13) {
+		_pdu[headerStart] |= (optionDelta << 4);
+	} else if(optionDelta<269) {
+	   // 1 extra byte
+		_pdu[headerStart] |= 0xD0; // 13 in first nibble
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (optionDelta-13);
+	} else {
+		// 2 extra bytes, network byte order uint16_t
+		_pdu[headerStart] |= 0xE0; // 14 in first nibble
+		optionDelta = htons(optionDelta-269);
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (optionDelta >> 8);     // MSB
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (optionDelta & 0x00FF); // LSB
+	}
+
+	// set the option value length bytes
+	if(optionValueLength<13) {
+		_pdu[headerStart] |= (optionValueLength & 0x000F);
+	} else if(optionValueLength<269) {
+		_pdu[headerStart] |= 0x0D; // 13 in second nibble
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (optionValueLength-13);
+	} else {
+		_pdu[headerStart] |= 0x0E; // 14 in second nibble
+		// this is in network byte order
+		DBG("optionValueLength: %u",optionValueLength);
+		uint16_t networkOrder = htons(optionValueLength-269);
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (networkOrder >> 8);     // MSB
+		_pdu[++insertionPosition] &= 0x00;
+		_pdu[insertionPosition] |= (networkOrder & 0x00FF); // LSB
+	}
+
+	// and finally copy the option value itself
+	memcpy(&_pdu[++insertionPosition],optionValue,optionValueLength);
+
+	return 0;
+}
+
+// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
+// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
+
+/// Prints the PDU in human-readable format.
 void CoapPDU::printHuman() {
 	INFO("__________________");
 	if(_constructedFromBuffer) {
@@ -977,10 +1459,7 @@ void CoapPDU::printHuman() {
 	INFO("__________________");
 }
 
-int CoapPDU::getPDULength() {
-	return _pduLength;
-}
-
+/// Prints the PDU as a c array (useful for debugging or hardcoding PDUs)
 void CoapPDU::printPDUAsCArray() {
 	printf("const uint8_t array[] = {\r\n   ");
 	for(int i=0; i<_pduLength; i++) {
@@ -989,6 +1468,10 @@ void CoapPDU::printPDUAsCArray() {
 	printf("\r\n};\r\n");
 }
 
+/// A routine for printing an option in human-readable format.
+/**
+ * \param option This is a pointer to where the option begins in the PDU.
+ */
 void CoapPDU::printOptionHuman(uint8_t *option) {
 	// compute some useful stuff
 	uint16_t optionDelta = getOptionDelta(option);
@@ -1058,369 +1541,6 @@ void CoapPDU::printOptionHuman(uint8_t *option) {
 		DBGX(" ");
 	}
 	DBG(" ");
-}
-
-uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
-	uint16_t delta = (option[0] & 0xF0) >> 4;
-	uint16_t length = (option[0] & 0x0F);
-	// no extra bytes
-	if(length<13) {
-		return length;
-	}
-	
-	// extra bytes skip header
-	int offset = 1;
-	// skip extra option delta bytes
-	if(delta==13) {
-		offset++;
-	} else if(delta==14) {
-		offset+=2;
-	}
-
-	// process length
-	if(length==13) {
-		return (option[offset]+13);
-	} else {
-		// need to convert to host order
-		uint16_t networkOrder = 0x0000;
-		networkOrder |= option[offset++];
-		networkOrder <<= 8;
-		networkOrder |= option[offset];
-		uint16_t hostOrder = ntohs(networkOrder);
-		return hostOrder+269;
-	}
-
-}
-
-uint16_t CoapPDU::getOptionDelta(uint8_t *option) {
-	uint16_t delta = (option[0] & 0xF0) >> 4;
-	if(delta<13) {
-		return delta;
-	} else if(delta==13) {
-		// single byte option delta
-		return (option[1]+13);
-	} else if(delta==14) {
-		// double byte option delta
-		// need to convert to host order
-		uint16_t networkOrder = 0x0000;
-		networkOrder |= option[1];
-		networkOrder <<= 8;
-		networkOrder |= option[2];
-		uint16_t hostOrder = ntohs(networkOrder);
-		return hostOrder+269;
-	} else {
-		// should only ever occur in payload marker
-		return delta;
-	}
-}
-
-int CoapPDU::getNumOptions() {
-	return _numOptions;
-}
-
-
-/**
- * This returns the options as a sequence of structs.
- */
-CoapPDU::CoapOption* CoapPDU::getOptions() {
-	DBG("getOptions() called, %d options.",_numOptions);
-
-	uint16_t optionDelta =0, optionNumber = 0, optionValueLength = 0;
-	int totalLength = 0;
-
-	if(_numOptions==0) {
-		return NULL;
-	}
-
-	// malloc space for options
-	CoapOption *options = (CoapOption*)malloc(_numOptions*sizeof(CoapOption));
-
-	// first option occurs after token
-	int optionPos = COAP_HDR_SIZE + getTokenLength();
-
-	// walk over options and record information
-	for(int i=0; i<_numOptions; i++) {
-		// extract option details
-		optionDelta = getOptionDelta(&_pdu[optionPos]);
-		optionNumber += optionDelta;
-		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
-		// compute total length
-		totalLength = 1; // mandatory header
-		totalLength += computeExtraBytes(optionDelta);
-		totalLength += computeExtraBytes(optionValueLength);
-		totalLength += optionValueLength;
-		// record option details
-		options[i].optionNumber = optionNumber;
-		options[i].optionDelta = optionDelta;
-		options[i].optionValueLength = optionValueLength;
-		options[i].totalLength = totalLength;
-		options[i].optionPointer = &_pdu[optionPos];
-		options[i].optionValuePointer = &_pdu[optionPos+totalLength-optionValueLength];
-		// move to next option
-		optionPos += totalLength; 
-	}
-
-	return options;
-}
-
-int CoapPDU::findInsertionPosition(uint16_t optionNumber, uint16_t *prevOptionNumber) {
-	// zero this for safety
-	*prevOptionNumber = 0x00;
-
-	DBG("_pduLength: %d",_pduLength);
-
-	// if option is bigger than any currently stored, it goes at the end
-	// this includes the case that no option has yet been added
-	if( (optionNumber >= _maxAddedOptionNumber) || (_pduLength == (COAP_HDR_SIZE+getTokenLength())) ) {
-		*prevOptionNumber = _maxAddedOptionNumber;
-		return _pduLength;
-	}
-
-	// otherwise walk over the options
-	int optionPos = COAP_HDR_SIZE + getTokenLength();
-	uint16_t optionDelta = 0, optionValueLength = 0;
-	uint16_t currentOptionNumber = 0;
-	while(optionPos<_pduLength && _pdu[optionPos]!=0xFF) {
-		optionDelta = getOptionDelta(&_pdu[optionPos]);
-		currentOptionNumber += optionDelta;
-		optionValueLength = getOptionValueLength(&_pdu[optionPos]);
-		// test if this is insertion position
-		if(currentOptionNumber>optionNumber) {
-			return optionPos;
-		}
-		// keep track of the last valid option number
-		*prevOptionNumber = currentOptionNumber;
-		// move onto next option
-		optionPos += computeExtraBytes(optionDelta);
-		optionPos += computeExtraBytes(optionValueLength);
-		optionPos += optionValueLength;
-		optionPos++; // (for mandatory option header byte)
-	}
-	return optionPos;
-
-}
-
-int CoapPDU::computeExtraBytes(uint16_t n) {
-	if(n<13) {
-		return 0;
-	}
-
-	if(n<269) { 
-		return 1;
-	}
-	
-	return 2;
-}
-
-// assumes space has been made
-void CoapPDU::setOptionDelta(int optionPosition, uint16_t optionDelta) {
-	int headerStart = optionPosition;
-	// clear the old option delta bytes
-	_pdu[headerStart] &= 0x0F;
-
-	// set the option delta bytes
-	if(optionDelta<13) {
-		_pdu[headerStart] |= (optionDelta << 4);
-	} else if(optionDelta<269) {
-	   // 1 extra byte
-		_pdu[headerStart] |= 0xD0; // 13 in first nibble
-		_pdu[++optionPosition] &= 0x00;
-		_pdu[optionPosition] |= (optionDelta-13);
-	} else {
-		// 2 extra bytes, network byte order uint16_t
-		_pdu[headerStart] |= 0xE0; // 14 in first nibble
-		optionDelta = htons(optionDelta-269);
-		_pdu[++optionPosition] &= 0x00;
-		_pdu[optionPosition] |= (optionDelta >> 8);     // MSB
-		_pdu[++optionPosition] &= 0x00;
-		_pdu[optionPosition] |= (optionDelta & 0x00FF); // LSB
-	}
-}
-
-// inserts option, in-memory
-// this requires that there is enough space at the location provided
-int CoapPDU::insertOption(
-	int insertionPosition,
-	uint16_t optionDelta, 
-	uint16_t optionValueLength,
-	uint8_t *optionValue) {
-
-	int headerStart = insertionPosition;
-
-	// clear old option header start
-	_pdu[headerStart] &= 0x00;
-
-	// set the option delta bytes
-	if(optionDelta<13) {
-		_pdu[headerStart] |= (optionDelta << 4);
-	} else if(optionDelta<269) {
-	   // 1 extra byte
-		_pdu[headerStart] |= 0xD0; // 13 in first nibble
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionDelta-13);
-	} else {
-		// 2 extra bytes, network byte order uint16_t
-		_pdu[headerStart] |= 0xE0; // 14 in first nibble
-		optionDelta = htons(optionDelta-269);
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionDelta >> 8);     // MSB
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionDelta & 0x00FF); // LSB
-	}
-
-	// set the option value length bytes
-	if(optionValueLength<13) {
-		_pdu[headerStart] |= (optionValueLength & 0x000F);
-	} else if(optionValueLength<269) {
-		_pdu[headerStart] |= 0x0D; // 13 in second nibble
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionValueLength-13);
-	} else {
-		_pdu[headerStart] |= 0x0E; // 14 in second nibble
-		// this is in network byte order
-		DBG("optionValueLength: %u",optionValueLength);
-		uint16_t networkOrder = htons(optionValueLength-269);
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (networkOrder >> 8);     // MSB
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (networkOrder & 0x00FF); // LSB
-	}
-
-	// and finally copy the option value itself
-	memcpy(&_pdu[++insertionPosition],optionValue,optionValueLength);
-
-	return 0;
-}
-
-int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength, uint8_t *optionValue) {
-	// this inserts the option in memory, and re-computes the deltas accordingly
-	// prevOption <-- insertionPosition
-	// nextOption
-
-	// find insertion location and previous option number
-	uint16_t prevOptionNumber = 0; // option number of option before insertion point
-	int insertionPosition = findInsertionPosition(insertedOptionNumber,&prevOptionNumber);
-	DBG("inserting option at position %d, after option with number: %hu",insertionPosition,prevOptionNumber);
-
-	// compute option delta length
-	uint16_t optionDelta = insertedOptionNumber-prevOptionNumber;
-	uint8_t extraDeltaBytes = computeExtraBytes(optionDelta);
-
-	// compute option length length
-	uint16_t extraLengthBytes = computeExtraBytes(optionValueLength);
-
-	// compute total length of option
-	uint16_t optionLength = COAP_OPTION_HDR_BYTE + extraDeltaBytes + extraLengthBytes + optionValueLength;
-
-	// if this is at the end of the PDU, job is done, just malloc and insert
-	if(insertionPosition==_pduLength) {
-		DBG("Inserting at end of PDU");
-		// optionNumber must be biggest added
-		_maxAddedOptionNumber = insertedOptionNumber;
-
-		// set new PDU length and allocate space for extra option
-		int oldPDULength = _pduLength;
-		_pduLength += optionLength;
-		if(!_constructedFromBuffer) {
-			uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-			if(newMemory==NULL) {
-				DBG("Failed to allocate memory for option.");
-				_pduLength = oldPDULength;
-				// malloc failed
-				return 1;
-			}
-			_pdu = newMemory;
-			_bufferLength = _pduLength;
-		} else {
-			// constructed from buffer, check space
-			if(_pduLength>_bufferLength) {
-				DBG("Buffer too small for new option: needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
-				_pduLength = oldPDULength;
-				return 1;
-			}
-		}
-		
-		// insert option at position
-		insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
-		_numOptions++;
-		return 0;
-	}
-	// XXX could do 0xFF pdu payload case for changing of dynamically allocated application space SDUs < yeah, if you're insane
-
-	// the next option might (probably) needs it's delta changing
-	// I want to take this into account when allocating space for the new
-	// option, to avoid having to do two mallocs, first get info about this option
-	int nextOptionDelta = getOptionDelta(&_pdu[insertionPosition]);
-	int nextOptionNumber = prevOptionNumber + nextOptionDelta;
-	int nextOptionDeltaBytes = computeExtraBytes(nextOptionDelta);
-	// recompute option delta, relative to inserted option
-	int newNextOptionDelta = nextOptionNumber-insertedOptionNumber;
-	int newNextOptionDeltaBytes = computeExtraBytes(newNextOptionDelta);
-	// determine adjustment
-	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
-
-	// create space for new option, including adjustment space for option delta
-	DBG_PDU();
-	DBG("Creating space");
-	int mallocLength = optionLength+optionDeltaAdjustment;
-	int oldPDULength = _pduLength;
-	_pduLength += mallocLength;
-
-	if(!_constructedFromBuffer) {
-		uint8_t *newMemory = (uint8_t*)realloc(_pdu,_pduLength);
-		if(newMemory==NULL) {
-			DBG("Failed to allocate memory for option");
-			_pduLength = oldPDULength;
-			return 1; 
-		}
-		_pdu = newMemory;
-		_bufferLength = _pduLength;
-	} else {
-		// constructed from buffer, check space
-		if(_pduLength>_bufferLength) {
-			DBG("Buffer too small to contain option, needed %d, got %d.",_pduLength-oldPDULength,_bufferLength-oldPDULength);
-			_pduLength = oldPDULength;
-			return 1;
-		}
-	}
-
-	// move remainder of PDU data up to create hole for new option
-	DBG_PDU();
-	DBG("Shifting PDU.");
-	shiftPDUUp(mallocLength,_pduLength-(insertionPosition+mallocLength));
-	DBG_PDU();
-
-	// adjust option delta bytes of following option
-	// move the option header to the correct position
-	int nextHeaderPos = insertionPosition+mallocLength;
-	_pdu[nextHeaderPos-optionDeltaAdjustment] = _pdu[nextHeaderPos];
-	nextHeaderPos -= optionDeltaAdjustment;
-	// and set the new value
-	setOptionDelta(nextHeaderPos, newNextOptionDelta);
-
-	// new option shorter
-	// p p n n x x x x x
-	// p p n n x x x x x -
-	// p p - n n x x x x x
-	// p p - - n x x x x x
-	// p p o o n x x x x x
-
-	// new option longer
-	// p p n n x x x x x
-	// p p n n x x x x x - - -
-	// p p - - - n n x x x x x
-	// p p - - n n n x x x x x
-	// p p o o n n n x x x x x
-
-
-	// now insert the new option into the gap
-	DBGLX("Inserting new option...");
-	insertOption(insertionPosition,optionDelta,optionValueLength,optionValue);
-	DBGX("done\r\n");
-	DBG_PDU();
-
-	// done, mark it with B! 
-	return 0;
 }
 
 uint8_t* CoapPDU::mallocPayload(int len) {

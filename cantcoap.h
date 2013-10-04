@@ -217,7 +217,6 @@ class CoapPDU {
 		// shorthand helpers
 		int setURI(char *uri, int urilen);
 		int getURI(char *dst, int dstlen, int *outLen);
-		int hasURI();
 
 		// content format helper
 		int setContentFormat(CoapPDU::ContentFormat format);
