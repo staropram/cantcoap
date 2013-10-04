@@ -86,13 +86,15 @@ class CoapPDU {
 
 
 	public:
+		/// CoAP message types. Note, values only work as enum.
 		enum Type {
 			COAP_CONFIRMABLE=0x00,
 			COAP_NON_CONFIRMABLE=0x10,
 			COAP_ACKNOWLEDGEMENT=0x20,
 			COAP_RESET=0x30
 		};
-
+		
+		// CoAP response codes.
 		enum Code {
 			COAP_EMPTY=0x00,
 			COAP_GET,
@@ -122,6 +124,7 @@ class CoapPDU {
 			COAP_PROXYING_NOT_SUPPORTED
 		};
 
+		/// CoAP option numbers.
 		enum Option {
 			COAP_OPTION_IF_MATCH=1,
 			COAP_OPTION_URI_HOST=3,
@@ -143,22 +146,7 @@ class CoapPDU {
 			COAP_OPTION_SIZE1=60
 		};
 
-/*
-	+------------------+----------+-------+-----------------------------+
-   | Media type       | Encoding |   Id. | Reference                   |
-   +------------------+----------+-------+-----------------------------+
-   | text/plain;      | -        |     0 | [RFC2046][RFC3676][RFC5147] |
-   | charset=utf-8    |          |       |                             |
-   | application/     | -        |    40 | [RFC6690]                   |
-   | link-format      |          |       |                             |
-   | application/xml  | -        |    41 | [RFC3023]                   |
-   | application/     | -        |    42 | [RFC2045][RFC2046]          |
-   | octet-stream     |          |       |                             |
-   | application/exi  | -        |    47 | [EXIMIME]                   |
-   | application/json | -        |    50 | [RFC4627]                   |
-   +------------------+----------+-------+-----------------------------+
-	*/
-
+		/// CoAP content-formats.
 		enum ContentFormat {
 			COAP_CONTENT_FORMAT_TEXT_PLAIN = 0,
 			COAP_CONTENT_FORMAT_APP_LINK  = 40,
@@ -168,7 +156,7 @@ class CoapPDU {
 			COAP_CONTENT_FORMAT_APP_JSON  = 50
 		};
 
-		// sequence returned by getOptions is comprised of CoapOption elements
+		/// Sequence of these is returned by CoapPDU::getOptions()
 		struct CoapOption {
 			uint16_t optionDelta;
 			uint16_t optionNumber;
@@ -178,13 +166,12 @@ class CoapPDU {
 			uint8_t *optionValuePointer;
 		};
 
-		// constructor and destructor
+		// construction and destruction
 		CoapPDU();
 		CoapPDU(uint8_t *pdu, int pduLength);
 		CoapPDU(uint8_t *buffer, int bufferLength, int pduLength);
 		~CoapPDU();
 		int reset();
-
 		int validate();
 
 		// version
@@ -228,6 +215,10 @@ class CoapPDU {
 		int getPayloadLength();
 		uint8_t* getPayloadCopy();
 
+		// pdu
+		int getPDULength();
+		uint8_t* getPDUPointer();
+
 		// debugging
 		static void printBinary(uint8_t b);
 		void print();
@@ -236,9 +227,6 @@ class CoapPDU {
 		void printOptionHuman(uint8_t *option);
 		void printHuman();
 		void printPDUAsCArray();
-
-		int getPDULength();
-		uint8_t* getPDUPointer();
 
 	private:
 		// variables

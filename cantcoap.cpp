@@ -788,6 +788,7 @@ int CoapPDU::getPDULength() {
 	return _pduLength;
 }
 
+/// Return the number of options that the PDU has.
 int CoapPDU::getNumOptions() {
 	return _numOptions;
 }
@@ -968,6 +969,8 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	// p p - - n n n x x x x x
 	// p p o o n n n x x x x x
 
+	// note, it can only ever be shorter or the same since if an option was inserted the delta got smaller
+	// but I'll leave that little comment in, just to show that it would work even if the delta got bigger
 
 	// now insert the new option into the gap
 	DBGLX("Inserting new option...");
@@ -976,6 +979,190 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	DBG_PDU();
 
 	// done, mark it with B! 
+	return 0;
+}
+
+/// Allocate space for a payload.
+/**
+ * For dynamically constructed PDUs, this will allocate space for a payload in the object
+ * and return a pointer to it. If the PDU was constructed from a buffer, this doesn't
+ * malloc anything, it just changes the _pduLength and returns the payload pointer.
+ *
+ * \note The pointer returned points into the PDU buffer.
+ * \param len The length of the payload buffer to allocate.
+ * \return Either a pointer to the payload buffer, or NULL if there wasn't enough space / allocation failed.
+ */
+uint8_t* CoapPDU::mallocPayload(int len) {
+	DBG("Entering mallocPayload");
+	// sanity checks
+	if(len==0) {
+		DBG("Cannot allocate a zero length payload");
+		return NULL;
+	}
+
+	// further sanity
+	if(len==_payloadLength) {
+		DBG("Space for payload of specified length already exists");
+		if(_payloadPointer==NULL) {
+			DBG("Garbage PDU. Payload length is %d, but existing _payloadPointer NULL",_payloadLength);
+			return NULL;
+		}
+		return _payloadPointer;
+	}
+
+	DBG("_bufferLength: %d, _pduLength: %d, _payloadLength: %d",_bufferLength,_pduLength,_payloadLength);
+
+	// might be making payload bigger (including bigger than 0) or smaller
+	int markerSpace = 1;
+	int payloadSpace = len;
+	// is this a resizing?
+	if(_payloadLength!=0) {
+		// marker already exists
+		markerSpace = 0;
+		// compute new payload length (can be negative if shrinking payload)
+		payloadSpace = len-_payloadLength;
+	}
+
+	// make space for payload (and payload marker if necessary)
+	int newLen = _pduLength+payloadSpace+markerSpace;
+	if(!_constructedFromBuffer) {
+		uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
+		if(newPDU==NULL) {
+			DBG("Cannot allocate (or shrink) space for payload");
+			return NULL;
+		}
+		_pdu = newPDU;
+		_bufferLength = newLen;
+	} else {
+		// constructed from buffer, check space
+		DBG("newLen: %d, _bufferLength: %d",newLen,_bufferLength);
+		if(newLen>_bufferLength) {
+			DBG("Buffer too small to contain desired payload, needed %d, got %d.",newLen-_pduLength,_bufferLength-_pduLength);
+			return NULL;
+		}
+	}
+
+	// deal with fresh allocation case separately
+	if(_payloadPointer==NULL) {
+		// set payload marker
+		_pdu[_pduLength] = 0xFF;
+		// payload at end of old PDU
+		_payloadPointer = &_pdu[_pduLength+1];
+		_pduLength = newLen;
+		_payloadLength = len;
+		return _payloadPointer;
+	}
+
+	// otherwise, just adjust length of PDU
+	_pduLength = newLen;
+	_payloadLength = len;
+	DBG("Leaving mallocPayload");
+	return _payloadPointer;
+}
+
+/// Set the payload to the byte sequence specified. Allocates memory in dynamic PDU if necessary.
+/**
+ * This will set the payload to \b payload. It will allocate memory in the case where the PDU was
+ * constructed without an external buffer.
+ *
+ * This will fail either if the fixed buffer isn't big enough, or if memory could not be allocated
+ * in the non-external-buffer case.
+ * 
+ * \param payload Pointer to payload byte sequence.
+ * \param len Length of payload byte sequence.
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::setPayload(uint8_t *payload, int len) {
+	if(payload==NULL) {
+		DBG("NULL payload pointer.");
+		return 1;
+	}
+
+	uint8_t *payloadPointer = mallocPayload(len);
+	if(payloadPointer==NULL) {
+		DBG("Allocation of payload failed");
+		return 1;
+	}
+
+	// copy payload contents
+	memcpy(payloadPointer,payload,len);
+
+	return 0;
+}
+
+/// Returns a pointer to the payload buffer.
+uint8_t* CoapPDU::getPayloadPointer() {
+	return _payloadPointer;
+}
+
+/// Gets the length of the payload buffer.
+int CoapPDU::getPayloadLength() {
+	return _payloadLength;
+}
+
+/// Returns a pointer to a buffer which is a copy of the payload buffer (dynamically allocated).
+uint8_t* CoapPDU::getPayloadCopy() {
+	if(_payloadLength==0) {
+		return NULL;
+	}
+
+	// malloc space for copy
+	uint8_t *payload = (uint8_t*)malloc(_payloadLength);
+	if(payload==NULL) {
+		DBG("Unable to allocate memory for payload");
+		return NULL;
+	}
+
+	// copy and return
+	memcpy(payload,_payloadPointer,_payloadLength);
+	return payload;
+}
+
+/// Shorthand for setting the content-format option.
+/**
+ * Sets the content-format to the specified value (adds an option). 
+ * \param format The content format, one of:
+ *
+ * - COAP_CONTENT_FORMAT_TEXT_PLAIN
+ * - COAP_CONTENT_FORMAT_APP_LINK
+ * - COAP_CONTENT_FORMAT_APP_XML
+ * - COAP_CONTENT_FORMAT_APP_OCTET
+ * - COAP_CONTENT_FORMAT_APP_EXI
+ * - COAP_CONTENT_FORMAT_APP_JSON
+ *
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
+	if(format==0) {
+		// minimal representation means null option value
+		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,0,NULL)!=0) {
+			DBG("Error setting content format");
+			return 1;
+		}
+		return 0;
+	}
+
+	uint8_t c[2];
+
+	// just use 1 byte if can do it
+	if(format<256) {
+		c[0] = format;
+		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,c)!=0) {
+			DBG("Error setting content format");
+			return 1;
+		}
+		return 0;
+	}
+
+	uint16_t networkOrder = htons(format);
+	c[0] &= 0x00;
+	c[0] |= (networkOrder >> 8);     // MSB
+	c[1] &= 0x00;
+	c[1] |= (networkOrder & 0x00FF); // LSB
+	if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,2,c)!=0) {
+		DBG("Error setting content format");
+		return 1;
+	}
 	return 0;
 }
 
@@ -1543,158 +1730,13 @@ void CoapPDU::printOptionHuman(uint8_t *option) {
 	DBG(" ");
 }
 
-uint8_t* CoapPDU::mallocPayload(int len) {
-	DBG("Entering mallocPayload");
-	// sanity checks
-	if(len==0) {
-		DBG("Cannot allocate a zero length payload");
-		return NULL;
-	}
-
-	// further sanity
-	if(len==_payloadLength) {
-		DBG("Space for payload of specified length already exists");
-		if(_payloadPointer==NULL) {
-			DBG("Garbage PDU. Payload length is %d, but existing _payloadPointer NULL",_payloadLength);
-			return NULL;
-		}
-		return _payloadPointer;
-	}
-
-	DBG("_bufferLength: %d, _pduLength: %d, _payloadLength: %d",_bufferLength,_pduLength,_payloadLength);
-
-	// might be making payload bigger (including bigger than 0) or smaller
-	int markerSpace = 1;
-	int payloadSpace = len;
-	// is this a resizing?
-	if(_payloadLength!=0) {
-		// marker already exists
-		markerSpace = 0;
-		// compute new payload length (can be negative if shrinking payload)
-		payloadSpace = len-_payloadLength;
-	}
-
-	// make space for payload (and payload marker if necessary)
-	int newLen = _pduLength+payloadSpace+markerSpace;
-	if(!_constructedFromBuffer) {
-		uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
-		if(newPDU==NULL) {
-			DBG("Cannot allocate (or shrink) space for payload");
-			return NULL;
-		}
-		_pdu = newPDU;
-		_bufferLength = newLen;
-	} else {
-		// constructed from buffer, check space
-		DBG("newLen: %d, _bufferLength: %d",newLen,_bufferLength);
-		if(newLen>_bufferLength) {
-			DBG("Buffer too small to contain desired payload, needed %d, got %d.",newLen-_pduLength,_bufferLength-_pduLength);
-			return NULL;
-		}
-	}
-
-	// deal with fresh allocation case separately
-	if(_payloadPointer==NULL) {
-		// set payload marker
-		_pdu[_pduLength] = 0xFF;
-		// payload at end of old PDU
-		_payloadPointer = &_pdu[_pduLength+1];
-		_pduLength = newLen;
-		_payloadLength = len;
-		return _payloadPointer;
-	}
-
-	// otherwise, just adjust length of PDU
-	_pduLength = newLen;
-	_payloadLength = len;
-	DBG("Leaving mallocPayload");
-	return _payloadPointer;
-}
-
-/// Set the payload based on a passed buffer.
-int CoapPDU::setPayload(uint8_t *payload, int len) {
-	if(payload==NULL) {
-		DBG("NULL payload pointer.");
-		return 1;
-	}
-
-	uint8_t *payloadPointer = mallocPayload(len);
-	if(payloadPointer==NULL) {
-		DBG("Allocation of payload failed");
-		return 1;
-	}
-
-	// copy payload contents
-	memcpy(payloadPointer,payload,len);
-
-	return 0;
-}
-
-uint8_t* CoapPDU::getPayloadPointer() {
-	return _payloadPointer;
-}
-
-int CoapPDU::getPayloadLength() {
-	return _payloadLength;
-}
-
-uint8_t* CoapPDU::getPayloadCopy() {
-	if(_payloadLength==0) {
-		return NULL;
-	}
-
-	// malloc space for copy
-	uint8_t *payload = (uint8_t*)malloc(_payloadLength);
-	if(payload==NULL) {
-		DBG("Unable to allocate memory for payload");
-		return NULL;
-	}
-
-	// copy and return
-	memcpy(payload,_payloadPointer,_payloadLength);
-	return payload;
-}
-
-// content format
-int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
-	if(format==0) {
-		// minimal representation means null option value
-		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,0,NULL)!=0) {
-			DBG("Error setting content format");
-			return 1;
-		}
-		return 0;
-	}
-
-	uint8_t c[2];
-
-	// just use 1 byte if can do it
-	if(format<256) {
-		c[0] = format;
-		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,c)!=0) {
-			DBG("Error setting content format");
-			return 1;
-		}
-		return 0;
-	}
-
-	uint16_t networkOrder = htons(format);
-	c[0] &= 0x00;
-	c[0] |= (networkOrder >> 8);     // MSB
-	c[1] &= 0x00;
-	c[1] |= (networkOrder & 0x00FF); // LSB
-	if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,2,c)!=0) {
-		DBG("Error setting content format");
-		return 1;
-	}
-	return 0;
-}
-
+/// Dumps the PDU header in hex.
 void CoapPDU::printHex() {
 	printf("Hexdump dump of PDU\r\n");
 	printf("%.2x %.2x %.2x %.2x",_pdu[0],_pdu[1],_pdu[2],_pdu[3]);
 }
 
+/// Dumps the entire PDU in binary.
 void CoapPDU::printBin() {
 	for(int i=0; i<_pduLength; i++) {
 		if(i%4==0) {
@@ -1706,6 +1748,7 @@ void CoapPDU::printBin() {
 	printf("\r\n");
 }
 
+/// Prints a single byte in binary.
 void CoapPDU::printBinary(uint8_t b) {
 	printf("%d%d%d%d%d%d%d%d",
 		(b&0x80)&&0x01,
@@ -1718,6 +1761,7 @@ void CoapPDU::printBinary(uint8_t b) {
 		(b&0x01)&&0x01);
 }
 
+/// Dumps the PDU as a byte sequence to stdout.
 void CoapPDU::print() {
 	fwrite(_pdu,1,_pduLength,stdout);
 }
