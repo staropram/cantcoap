@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
 
 		// validate packet
 		recvPDU = new CoapPDU((uint8_t*)buffer,ret);
-		if(recvPDU->isValid()!=1) {
+		if(recvPDU->validate()!=1) {
 			INFO("Malformed CoAP packet");
 			delete recvPDU;
 			continue;

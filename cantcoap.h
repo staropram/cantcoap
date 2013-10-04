@@ -179,9 +179,11 @@ class CoapPDU {
 		// constructor and destructor
 		CoapPDU();
 		CoapPDU(uint8_t *pdu, int pduLength);
+		CoapPDU(uint8_t *buffer, int bufferLength, int pduLength);
 		~CoapPDU();
+		int reset();
 
-		int isValid();
+		int validate();
 
 		// version
 		int setVersion(uint8_t version);
@@ -242,13 +244,13 @@ class CoapPDU {
 		uint8_t *_pdu;
 		int _pduLength;
 
+		int _constructedFromBuffer;
+		int _bufferLength;
+
 		uint8_t *_payloadPointer;
 		int _payloadLength;
 
 		int _numOptions;
-
-		// meta data
-		int _constructedFromBuffer;
 		uint16_t _maxAddedOptionNumber;
 
 		// functions

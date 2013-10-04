@@ -40,37 +40,152 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cantcoap.h"
 #include "arpa/inet.h"
 
-/// constructor
+/// Memory-managed constructor. Buffer for PDU is dynamically sized and allocated by class.
+/**
+ * By using this constructor, your intention is that the CoapPDU class will allocate space for the PDU.
+ * Contrast this with the parameterized constructors, which allow you to reuse an external buffer.
+ *
+ * Note, the PDU container and space can be reused by issuing a CoapPDU::reset(). If the new PDU exceeds the 
+ * space of the previously allocated memory, then further memory will be dynamically allocated.
+ *
+ * Deleting the object will free the Object container and all dynamic memory allocated.
+ *
+ * \sa CoapPDU::CoapPDU(uint8_t *pdu, int pduLength), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength)
+ */
 CoapPDU::CoapPDU() {
+	// pdu
 	_pdu = (uint8_t*)calloc(4,sizeof(uint8_t));
 	_pduLength = 4;
+	_bufferLength = _pduLength;
+
+	//options
 	_numOptions = 0;
-	_payloadPointer = NULL;
-	_payloadLength = 0;
-	_constructedFromBuffer = 0;
 	_maxAddedOptionNumber = 0;
 
-	// options
-	// XXX it would have been nice to use something like UDP_CORK or MSG_MORE 
+	// payload
+	_payloadPointer = NULL;
+	_payloadLength = 0;
+
+	_constructedFromBuffer = 0;
+
+	// Note
+	// It would have been nice to use something like UDP_CORK or MSG_MORE 
 	// but these aren't implemented for UDP in LwIP. So another option would 
 	// be to re-arrange memory every time an option is added out-of-order
 	// this would be a ballache however, so for now, we'll just dump this to
 	// a PDU at the end
 }
 
+/// Construct a PDU using an external buffer. No copy of the buffer is made.
+/**
+ * This constructor is normally used where a PDU has been received over the network, and its length is known.
+ * In this case the CoapPDU object is probably used as temporary container to access member values.
+ *
+ * It is assumed that \pduLength is the length of the actual CoAP PDU, contrast this with 
+ * CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) which allows the buffer to be larger than the PDU.
+ *
+ * A PDU constructed in this manner must be validated with CoapPDU::validate() before the member variables will be accessible.
+ * 
+ * The buffer can be reused by issuing a CoapPDU::reset() but the class will not change the size of the buffer. If the
+ * newly constructed PDU exceeds the size of the buffer, the function called (for example CoapPDU::addOption) will fail.
+ *
+ * Deleting this object will only delete the Object container and will not delete the PDU buffer.
+ *
+ * @param pdu A pointer to an array of bytes which comprise the CoAP PDU
+ * @param pduLength The length of the CoAP PDU pointed to by \a pdu
+
+ * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU::(uint8_t *buffer, int bufferLength, int pduLength)
+ */
 CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) {
-	// XXX should we copy this ?
+	// pdu
 	_pdu = pdu;
-	_numOptions = 0;
 	_pduLength = pduLength;
+	_bufferLength = pduLength;
+	_constructedFromBuffer = 1;
+
+	// options
+	_numOptions = 0;
+	_maxAddedOptionNumber = 0;
+
+	// payload
 	_payloadPointer = NULL;
 	_payloadLength = 0;
-	_constructedFromBuffer = 1;
-	_maxAddedOptionNumber = 0;
 }
 
-// validates a PDU
-int CoapPDU::isValid() {
+/// Construct object from external buffer that may be larger than actual PDU.
+/**
+ * This differs from CoapPDU::CoapPDU(uint8_t *pdu, int pduLength) in that the buffer may be larger
+ * than the actual CoAP PDU contained int the buffer. This is typically used when a large buffer is reused
+ * multiple times. Note that \b pduLength can be 0.
+ * 
+ * If an actual CoAP PDU is passed in the buffer, \b pduLength should match its length. CoapPDU::validate() must
+ * be called to initiate the object before member functions can be used.
+ *
+ * \param buffer A buffer which either contains a CoAP PDU or is intended to be used to construct one.
+ * \param bufferLength The length of the buffer
+ * \param pduLength If the buffer contains a CoAP PDU, this specifies the length of the PDU within the buffer.
+ *
+ * \sa CoapPDU::CoapPDU(), CoapPDU::CoapPDU(uint8_t *pdu, int pduLength)
+ */
+CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
+	// pdu
+	_pdu = buffer;
+	_pduLength = pduLength;
+	_bufferLength = bufferLength;
+	_constructedFromBuffer = 1;
+
+	// options
+	_numOptions = 0;
+	_maxAddedOptionNumber = 0;
+
+	// payload
+	_payloadPointer = NULL;
+	_payloadLength = 0;
+}
+
+/// Reset CoapPDU container so it can be reused to build a new PDU.
+/**
+ * This resets the CoapPDU container, setting the pdu length, option count, etc back to zero. The
+ * PDU can then be populated as if it were newly constructed.
+ *
+ * Note that the space available will depend on how the CoapPDU was originally constructed:
+ * -# CoapPDU::CoapPDU()
+ *
+ * 	Space is allocated as needed on demand, limited only by the OS/environment.
+ *
+ * -# CoapPDU::CoapPDU(uint8_t *pdu, int pduLength)
+ *
+ *		Space is limited by the variable \b pduLength. The PDU cannot exceed \b pduLength bytes.
+ *		 
+ * -# CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength)
+ *
+ *		Space is limited by the variable \b bufferLength. The PDU cannot exceed \b bufferLength bytes.
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::reset() {
+	// pdu
+	memset(_pdu,0x00,_bufferLength);
+	_pduLength = 0;
+
+	// options
+	_numOptions = 0;
+	_maxAddedOptionNumber = 0;
+	// payload
+	_payloadPointer = NULL;
+	_payloadLength = 0;
+}
+
+/// Validates a PDU constructed using an external buffer.
+/**
+ * When a CoapPDU is constructed using an external buffer, the programmer must call this function to
+ * check that the received PDU is a valid CoAP PDU.
+ *
+ * \warning The validation call parses the PDU structure to set some internal parameters. If you do
+ * not validate the PDU, then the behaviour of member access functions will be undefined.
+ *
+ * \return 1 if the PDU validates correctly, 0 if not. XXX maybe add some error codes
+ */
+int CoapPDU::validate() {
 	if(_pduLength<4) {
 		DBG("PDU has to be a minimum of 4 bytes. This: %d bytes",_pduLength);
 		return 0;
@@ -225,16 +340,40 @@ int CoapPDU::isValid() {
 	return 1;
 }
 
+/// Destructor. Does not free buffer if external.
+/**
+ * The destructor acts differently, depending on how the object was initially constructed (from buffer or not).
+ *
+ * -# CoapPDU::CoapPDU()
+ *
+ * 	Complete object is destroyed.
+ *
+ * -# CoapPDU::CoapPDU(uint8_t *pdu, int pduLength)
+ *
+ *		Only object container is destroyed. \b pdu is left intact.
+ *		 
+ * -# CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength)
+ *
+ *		Only object container is destroyed. \b pdu is left intact.
+ *
+ */
 CoapPDU::~CoapPDU() {
 	if(!_constructedFromBuffer) {
 		free(_pdu);
 	}
 }
 
+/// Returns a pointer to the internal buffer.
 uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
 
+/// Shorthand function for setting a resource URI.
+/**
+ * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
+ *
+ * \return 1 on success, 0 on failure.
+ */
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/' and alphabetic chars allowed
 	// very simple splitting done
@@ -1232,6 +1371,7 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 // XXX add a no-malloc option later so that people can pass a buffer in to use
 // for now, just use this buffer
 uint8_t* CoapPDU::mallocPayload(int len) {
+	// XXX allow to make bigger
 	if(len==0) {
 		DBG("Cannot allocate a zero length payload");
 		return NULL;
