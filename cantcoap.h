@@ -1,53 +1,6 @@
-// version, 2 bits
-// type, 2 bits
-	// 00 Confirmable
-	// 01 Non-confirmable
-	// 10 Acknowledgement
-	// 11 Reset
-
-
-/*
-#define COAP_CODE_EMPTY 0x00
-
-// method codes 0.01-0.31
-#define COAP_CODE_GET 	0x01
-#define COAP_CODE_POST 	0x02
-#define COAP_CODE_PUT 	0x03
-#define COAP_CODE_DELETE 0x04
-
-// Response codes 2.00 - 5.31
-// 2.00 - 2.05
-#define COAP_CODE_CREATED 0x41 
-#define COAP_CODE_DELETED 0x42
-#define COAP_CODE_VALID   0x43
-#define COAP_CODE_CHANGED 0x44
-#define COAP_CODE_CONTENT 0x45
-
-// 4.00 - 4.15
-#define COAP_CODE_BAD_REQUEST						0x80
-#define COAP_CODE_UNAUTHORIZED					0x81
-#define COAP_CODE_BAD_OPTION						0x82
-#define COAP_CODE_FORBIDDEN						0x83
-#define COAP_CODE_NOT_FOUND    					0x84
-#define COAP_CODE_METHOD_NOT_ALLOWED 			0x85
-#define COAP_CODE_NOT_ACCEPTABLE					0x86
-#define COAP_CODE_PRECONDITION_FAILED			0x8C
-#define COAP_CODE_REQUEST_ENTITY_TOO_LARGE	0x8D
-#define COAP_CODE_UNSUPPORTED_CONTENT_FORMAT	0x8F
-
-// 5.00 - 5.05
-#define COAP_CODE_INTERNAL_SERVER_ERROR		0xA0
-#define COAP_CODE_NOT_IMPLEMENTED				0xA1
-#define COAP_CODE_BAD_GATEWAY						0xA2
-#define COAP_CODE_SERVICE_UNAVAILABLE			0xA3
-#define COAP_CODE_GATEWAY_TIMEOUT				0xA4
-#define COAP_CODE_PROXYING_NOT_SUPPORTED		0xA5
-*/
-
+/// Copyright (c) 2013, Ashley Mills.
 #include <unistd.h>
 #include <stdint.h>
-
-//#define COAP_CODE.
 
 #define INFO(...) printf(__VA_ARGS__); printf("\r\n");
 #define INFOX(...); printf(__VA_ARGS__);
@@ -256,3 +209,41 @@ class CoapPDU {
 		uint16_t getOptionValueLength(uint8_t *option);
 		
 };
+
+/*
+#define COAP_CODE_EMPTY 0x00
+
+// method codes 0.01-0.31
+#define COAP_CODE_GET 	0x01
+#define COAP_CODE_POST 	0x02
+#define COAP_CODE_PUT 	0x03
+#define COAP_CODE_DELETE 0x04
+
+// Response codes 2.00 - 5.31
+// 2.00 - 2.05
+#define COAP_CODE_CREATED 0x41 
+#define COAP_CODE_DELETED 0x42
+#define COAP_CODE_VALID   0x43
+#define COAP_CODE_CHANGED 0x44
+#define COAP_CODE_CONTENT 0x45
+
+// 4.00 - 4.15
+#define COAP_CODE_BAD_REQUEST                0x80
+#define COAP_CODE_UNAUTHORIZED               0x81
+#define COAP_CODE_BAD_OPTION                 0x82
+#define COAP_CODE_FORBIDDEN                  0x83
+#define COAP_CODE_NOT_FOUND                  0x84
+#define COAP_CODE_METHOD_NOT_ALLOWED         0x85
+#define COAP_CODE_NOT_ACCEPTABLE             0x86
+#define COAP_CODE_PRECONDITION_FAILED        0x8C
+#define COAP_CODE_REQUEST_ENTITY_TOO_LARGE   0x8D
+#define COAP_CODE_UNSUPPORTED_CONTENT_FORMAT 0x8F
+
+// 5.00 - 5.05
+#define COAP_CODE_INTERNAL_SERVER_ERROR      0xA0
+#define COAP_CODE_NOT_IMPLEMENTED            0xA1
+#define COAP_CODE_BAD_GATEWAY                0xA2
+#define COAP_CODE_SERVICE_UNAVAILABLE        0xA3
+#define COAP_CODE_GATEWAY_TIMEOUT            0xA4
+#define COAP_CODE_PROXYING_NOT_SUPPORTED     0xA5
+*/
