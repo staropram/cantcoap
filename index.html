@@ -36,6 +36,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow1" class="tabs">
     <ul class="tablist">
       <li class="current"><a href="index.html"><span>Main&#160;Page</span></a></li>
+      <li><a href="pages.html"><span>Related&#160;Pages</span></a></li>
       <li><a href="annotated.html"><span>Classes</span></a></li>
       <li><a href="files.html"><span>Files</span></a></li>
       <li>
@@ -62,7 +63,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Enumerations</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -76,10 +77,86 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">Can't CoAP Documentation</div>  </div>
 </div><!--header-->
 <div class="contents">
-</div><!-- contents -->
+<div class="textblock"><h1>cantcoap</h1>
+<p>CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.</p>
+<div class="fragment"><div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *pdu = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>();</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a5aed3e2860acdd3beeac6a812fcf4700">setType</a>(CoapPDU::COAP_CONFIRMABLE);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a45b63b94ede0981380517a08fbd52058" title="Sets the CoAP response code.">setCode</a>(CoapPDU::COAP_GET);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#adafa3fa099f4ba5248a05bb4a120bbed" title="Set the PDU token to the supplied byte sequence.">setToken</a>((uint8_t*)<span class="stringliteral">&quot;\3\2\1\0&quot;</span>,4);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#afd64c65662e72058abe6008a1abe08ec" title="Set messageID to the supplied value.">setMessageID</a>(0x0005);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a5a53a8147901753189773d9eabe1d142" title="Shorthand function for setting a resource URI.">setURI</a>((<span class="keywordtype">char</span>*)<span class="stringliteral">&quot;test&quot;</span>,4);</div>
+<div class="line"></div>
+<div class="line"><span class="comment">// send packet </span></div>
+<div class="line">ret = send(sockfd,pdu-&gt;<a class="code" href="classCoapPDU.html#af02b5f6354c577957ab8a7fd307c11b1" title="Returns a pointer to the internal buffer.">getPDUPointer</a>(),pdu-&gt;<a class="code" href="classCoapPDU.html#a4bba97161bdc42ae88ff8787ca1779f0" title="Returns the length of the PDU.">getPDULength</a>(),0);</div>
+</div><!-- fragment --><p> ...</p>
+<div class="fragment"><div class="line"><span class="comment">// receive packet</span></div>
+<div class="line">ret = recvfrom(sockfd,&amp;buffer,BUF_LEN,0,(sockaddr*)&amp;recvAddr,&amp;recvAddrLen);</div>
+<div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *recvPDU = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>((uint8_t*)buffer,ret);</div>
+<div class="line"><span class="keywordflow">if</span>(recvPDU-&gt;<a class="code" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">validate</a>()) {</div>
+<div class="line">        recvPDU-&gt;<a class="code" href="classCoapPDU.html#ab84a11627b55810181d82b673d674468" title="Concatenates any URI_PATH elements into a single string.">getURI</a>(uriBuffer,URI_BUF_LEN,&amp;recvURILen);</div>
+<div class="line">        ...</div>
+<div class="line">}</div>
+</div><!-- fragment --><h1>Compilation</h1>
+<h2>Dependencies</h2>
+<h3>CUnit</h3>
+<p>See: <a href="http://cunit.sourceforge.net/">http://cunit.sourceforge.net/</a></p>
+<p>This is a testing framework for c. On Debian based Linux you need libcunit1 and libcunit1-dev</p>
+<h4>Debian (Ubuntu, Mint etc...)</h4>
+<p>#apt-get update &amp;&amp; apt-get install libcunit1 libcunit1-dev</p>
+<p>Or for newbie types:</p>
+<p>$sudo apt-get update</p>
+<p>$sudo apt-get install libcunit1 libcunit1-dev</p>
+<h4>SuSE Linux - openSUSE 12.1 (x86_64)</h4>
+<p>Note there is different package naming convention here for packages.</p>
+<p>$sudo zypper install libcunit-dev</p>
+<p>$sudo zypper install cunit-devel</p>
+<h4>BSD</h4>
+<p>Probably some variation, but for FreeBSD, CUnit is in the ports collection at /usr/ports/devel/cunit.</p>
+<h2>Build</h2>
+<p>Type make (Note, build with GNU make on BSD). This builds the test framework too. Type ./test to feel some misplaced confidence.</p>
+<p>There is also an example client and server made. The server is supposed to work with the website coap.me, but isn't finished.</p>
+<h1>Long description</h1>
+<p>This is a CoAP implementation with a focus on simplicity. The library only provides PDU construction and de-construction.</p>
+<p>The user is expected to deal with retransmissions, timeouts, and message ID matching themselves. This isn’t as arduous as it sounds and makes a lot more sense on a constrained device.</p>
+<p>Imagine for example a simple microcontroller sensor that only reports readings once every 15 minutes, and only sends a few packets each time. Do you really need a complicated framework to deal with acknowledgements and re-transmissions?</p>
+<p>Since CoAP recommends you only send one packet at at time, this means you only need to keep track of one on-going transaction at a time. Yeah... I think you’re capable of this.</p>
+<p>Furthermore, the timers and interrupt processes between different embedded processor architectures, vary quite a bit. So it often makes sense to write the packet sending processes yourself.</p>
+<p>Finally, you might be sending the packets over odd transport bearers such as a SMS (woah dude, that's just totally wild) or a simple radio bearer. In which case, it’s easiest to deal with buffers. If I built retransmission handlers, they’d all be UDP/IP specific and would bloat the code for no reason.</p>
+<h1>Examples</h1>
+<h2>Construction</h2>
+<p>There are a couple of different ways to construct a PDU depending on whether you want the library to allocate memory for you, or whether you have an external buffer you want to use. You can also re-purpose existing objects.</p>
+<h3>Using a managed object</h3>
+<p>The simplest usage scenario hands control of memory allocation to the library:</p>
+<p>```C++ <a class="el" href="classCoapPDU.html">CoapPDU</a> <em>pdu = new CoapPDU(); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t</em>)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ``` In this case you just call the default constructor. That's it. The library handles memory from there-on out. For example, when adding each of those options, the library will realloc the pdu to accomodate space for them. It will also shrink the PDU if something changes (like the token length) so that it always uses the minimum amount of memory.</p>
+<p>When you free the PDU, all data including the buffer is deleted. The PDU can also be reused as shown below.</p>
+<h3>Using an external buffer for memory</h3>
+<p>There are two obvious reasons why you would do this:</p>
+<ol type="1">
+<li>The buffer contains a CoAP PDU and you want to access the data in the PDU.</li>
+<li>Buffers cost space and allocating memory consumes processor resources. On embedded targets it is often simpler to reuse buffers where possible.</li>
+</ol>
+<p>The first instance is a special case and requires some extra work. Just using an external buffer is as simple as follows:</p>
+<p>```C++ uint8_t <em>buffer[100]; <a class="el" href="classCoapPDU.html">CoapPDU</a> *pdu = new <a class="el" href="classCoapPDU.html">CoapPDU</a>((uint8_t</em>)buffer,100,0); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t*)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ```</p>
+<p>The PDU is constructed as normal except that the memory of your buffer is used instead of allocated memory.</p>
+<p>A call such as this:</p>
+<p>```C++ pdu-&gt;addOption(11,5,(uint8_t*)"hello"); ```</p>
+<p>Will fail if there is no space left in the buffer.</p>
+<p>When you delete the object, the buffer is not freed. Hey, it's your buffer mannn!</p>
+<h3>Reusing an existing object</h3>
+<p>Regardless of whether you constructed a PDU using either of the above methods, you can always reuse it:</p>
+<p>```C++ pdu-&gt;reset(); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t*)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ```</p>
+<p>The only difference is that if the PDU was initially constructed using managed-memory, then it will continue to have managed-memory. Whereas if the PDU was constructed with an external buffer, then you are limited in space by the size of the buffer you used.</p>
+<h2>Receving CoAP packets over a network or something</h2>
+<p>In this case you have a CoAP PDU in a buffer you just gobbled from a socket and want to read it:</p>
+<p>```C++ uint8_t <em>buffer[100]; int ret = recvfrom(sockfd,&amp;buffer,BUF_LEN,0,(sockaddr</em>)&amp;recvAddr,&amp;recvAddrLen); <a class="el" href="classCoapPDU.html">CoapPDU</a> <em>recvPDU = new <a class="el" href="classCoapPDU.html">CoapPDU</a>((uint8_t</em>)buffer,ret,100); if(recvPDU-&gt;validate()) { recvPDU-&gt;printHuman(); // do your work } ```</p>
+<p>You must call <a class="el" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">CoapPDU::validate()</a> and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.</p>
+<p>Note that the constructor is just a shorthand for the external-buffer-constructor explained above, and you can use the long form if you want. For example. you might want to use the long form if you have a buffer bigger than the PDU and you expect to reuse it.</p>
+<p>You can reuse this object by resetting it as above.</p>
+<h2>Setting options</h2>
+</div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Oct 7 2013 13:56:42 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Oct 7 2013 14:20:03 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.1.2
 </small></address>
