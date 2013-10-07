@@ -1568,6 +1568,9 @@ void CoapPDU::printHuman() {
 			case COAP_OPTION_IF_NONE_MATCH:
 				INFO("IF_NONE_MATCH");
 			break;
+			case COAP_OPTION_OBSERVE:
+				INFO("OBSERVE");
+			break;
 			case COAP_OPTION_URI_PORT:
 				INFO("URI_PORT");
 			break;
