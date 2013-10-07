@@ -77,7 +77,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">Can't CoAP Documentation</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><h1>cantcoap</h1>
+<div class="textblock"><p>Doxygen generated docs are here: <a href="http://staropram.github.io/cantcoap/index.html">http://staropram.github.io/cantcoap/index.html</a></p>
+<h1>cantcoap</h1>
 <p>CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.</p>
 <div class="fragment"><div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *pdu = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>();</div>
 <div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a5aed3e2860acdd3beeac6a812fcf4700">setType</a>(CoapPDU::COAP_CONFIRMABLE);</div>
@@ -88,7 +89,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"></div>
 <div class="line"><span class="comment">// send packet </span></div>
 <div class="line">ret = send(sockfd,pdu-&gt;<a class="code" href="classCoapPDU.html#af02b5f6354c577957ab8a7fd307c11b1" title="Returns a pointer to the internal buffer.">getPDUPointer</a>(),pdu-&gt;<a class="code" href="classCoapPDU.html#a4bba97161bdc42ae88ff8787ca1779f0" title="Returns the length of the PDU.">getPDULength</a>(),0);</div>
-</div><!-- fragment --><p> ...</p>
+</div><!-- fragment --><p>...</p>
 <div class="fragment"><div class="line"><span class="comment">// receive packet</span></div>
 <div class="line">ret = recvfrom(sockfd,&amp;buffer,BUF_LEN,0,(sockaddr*)&amp;recvAddr,&amp;recvAddrLen);</div>
 <div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *recvPDU = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>((uint8_t*)buffer,ret);</div>
@@ -127,7 +128,14 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <p>There are a couple of different ways to construct a PDU depending on whether you want the library to allocate memory for you, or whether you have an external buffer you want to use. You can also re-purpose existing objects.</p>
 <h3>Using a managed object</h3>
 <p>The simplest usage scenario hands control of memory allocation to the library:</p>
-<p>```C++ <a class="el" href="classCoapPDU.html">CoapPDU</a> <em>pdu = new CoapPDU(); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t</em>)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ``` In this case you just call the default constructor. That's it. The library handles memory from there-on out. For example, when adding each of those options, the library will realloc the pdu to accomodate space for them. It will also shrink the PDU if something changes (like the token length) so that it always uses the minimum amount of memory.</p>
+<div class="fragment"><div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *pdu = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>();</div>
+<div class="line">...</div>
+<div class="line">pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a45b63b94ede0981380517a08fbd52058" title="Sets the CoAP response code.">setCode</a>(CoapPDU::COAP_GET);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;hello&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;there&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,6,(uint8_t*)<span class="stringliteral">&quot;server&quot;</span>);</div>
+</div><!-- fragment --><p>In this case you just call the default constructor. That's it. The library handles memory from there-on out. For example, when adding each of those options, the library will realloc the pdu to accomodate space for them. It will also shrink the PDU if something changes (like the token length) so that it always uses the minimum amount of memory.</p>
 <p>When you free the PDU, all data including the buffer is deleted. The PDU can also be reused as shown below.</p>
 <h3>Using an external buffer for memory</h3>
 <p>There are two obvious reasons why you would do this:</p>
@@ -136,27 +144,46 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <li>Buffers cost space and allocating memory consumes processor resources. On embedded targets it is often simpler to reuse buffers where possible.</li>
 </ol>
 <p>The first instance is a special case and requires some extra work. Just using an external buffer is as simple as follows:</p>
-<p>```C++ uint8_t <em>buffer[100]; <a class="el" href="classCoapPDU.html">CoapPDU</a> *pdu = new <a class="el" href="classCoapPDU.html">CoapPDU</a>((uint8_t</em>)buffer,100,0); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t*)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ```</p>
-<p>The PDU is constructed as normal except that the memory of your buffer is used instead of allocated memory.</p>
+<div class="fragment"><div class="line">uint8_t *buffer[100];</div>
+<div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *pdu = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>((uint8_t*)buffer,100,0);</div>
+<div class="line">...</div>
+<div class="line">pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a45b63b94ede0981380517a08fbd52058" title="Sets the CoAP response code.">setCode</a>(CoapPDU::COAP_GET);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;hello&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;there&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,6,(uint8_t*)<span class="stringliteral">&quot;server&quot;</span>);</div>
+</div><!-- fragment --><p>The PDU is constructed as normal except that the memory of your buffer is used instead of allocated memory.</p>
 <p>A call such as this:</p>
-<p>```C++ pdu-&gt;addOption(11,5,(uint8_t*)"hello"); ```</p>
-<p>Will fail if there is no space left in the buffer.</p>
+<div class="fragment"><div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;hello&quot;</span>);</div>
+</div><!-- fragment --><p>Will fail if there is no space left in the buffer.</p>
 <p>When you delete the object, the buffer is not freed. Hey, it's your buffer mannn!</p>
 <h3>Reusing an existing object</h3>
 <p>Regardless of whether you constructed a PDU using either of the above methods, you can always reuse it:</p>
-<p>```C++ pdu-&gt;reset(); ... pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE); pdu-&gt;setCode(CoapPDU::COAP_GET); pdu-&gt;addOption(11,5,(uint8_t*)"hello"); pdu-&gt;addOption(11,5,(uint8_t*)"there"); pdu-&gt;addOption(11,6,(uint8_t*)"server"); ```</p>
-<p>The only difference is that if the PDU was initially constructed using managed-memory, then it will continue to have managed-memory. Whereas if the PDU was constructed with an external buffer, then you are limited in space by the size of the buffer you used.</p>
+<div class="fragment"><div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#add695cf1e57cae13cfbfb9b6964a4456" title="Reset CoapPDU container so it can be reused to build a new PDU.">reset</a>(); </div>
+<div class="line">...</div>
+<div class="line">pdu-&gt;setType(CoapPDU::COAP_CONFIRMABLE);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#a45b63b94ede0981380517a08fbd52058" title="Sets the CoAP response code.">setCode</a>(CoapPDU::COAP_GET);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;hello&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,5,(uint8_t*)<span class="stringliteral">&quot;there&quot;</span>);</div>
+<div class="line">pdu-&gt;<a class="code" href="classCoapPDU.html#aab90c3016ce4eeb3b8580e43233e131f" title="Add an option to the PDU.">addOption</a>(11,6,(uint8_t*)<span class="stringliteral">&quot;server&quot;</span>);</div>
+</div><!-- fragment --><p>The only difference is that if the PDU was initially constructed using managed-memory, then it will continue to have managed-memory. Whereas if the PDU was constructed with an external buffer, then you are limited in space by the size of the buffer you used.</p>
 <h2>Receving CoAP packets over a network or something</h2>
 <p>In this case you have a CoAP PDU in a buffer you just gobbled from a socket and want to read it:</p>
-<p>```C++ uint8_t <em>buffer[100]; int ret = recvfrom(sockfd,&amp;buffer,BUF_LEN,0,(sockaddr</em>)&amp;recvAddr,&amp;recvAddrLen); <a class="el" href="classCoapPDU.html">CoapPDU</a> <em>recvPDU = new <a class="el" href="classCoapPDU.html">CoapPDU</a>((uint8_t</em>)buffer,ret,100); if(recvPDU-&gt;validate()) { recvPDU-&gt;printHuman(); // do your work } ```</p>
-<p>You must call <a class="el" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">CoapPDU::validate()</a> and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.</p>
+<div class="fragment"><div class="line">uint8_t *buffer[100];</div>
+<div class="line"><span class="keywordtype">int</span> ret = recvfrom(sockfd,&amp;buffer,BUF_LEN,0,(sockaddr*)&amp;recvAddr,&amp;recvAddrLen);</div>
+<div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *recvPDU = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>((uint8_t*)buffer,ret,100);</div>
+<div class="line"><span class="keywordflow">if</span>(recvPDU-&gt;<a class="code" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">validate</a>()) {</div>
+<div class="line">        recvPDU-&gt;<a class="code" href="classCoapPDU.html#a0c0ba3c365647178f04e84c8e2412785" title="Prints the PDU in human-readable format.">printHuman</a>();</div>
+<div class="line">        <span class="comment">// do your work</span></div>
+<div class="line">}</div>
+</div><!-- fragment --><p>You must call <a class="el" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">CoapPDU::validate()</a> and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.</p>
 <p>Note that the constructor is just a shorthand for the external-buffer-constructor explained above, and you can use the long form if you want. For example. you might want to use the long form if you have a buffer bigger than the PDU and you expect to reuse it.</p>
 <p>You can reuse this object by resetting it as above.</p>
 <h2>Setting options</h2>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Oct 7 2013 14:23:55 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Oct 7 2013 14:40:05 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.1.2
 </small></address>
