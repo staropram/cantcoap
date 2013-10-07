@@ -1,24 +1,27 @@
 @mainpage
 
+Doxygen generated docs are here: [http://staropram.github.io/cantcoap/index.html](http://staropram.github.io/cantcoap/index.html)
+
 cantcoap
 ========
 
 CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.
 
-~~~~~~~~~~~~{.cpp}
-CoapPDU *pdu = new CoapPDU();
-pdu->setType(CoapPDU::COAP_CONFIRMABLE);
-pdu->setCode(CoapPDU::COAP_GET);
-pdu->setToken((uint8_t*)"\3\2\1\0",4);
-pdu->setMessageID(0x0005);
-pdu->setURI((char*)"test",4);
+~~~{.cpp}
+	CoapPDU *pdu = new CoapPDU();
+	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+	pdu->setCode(CoapPDU::COAP_GET);
+	pdu->setToken((uint8_t*)"\3\2\1\0",4);
+	pdu->setMessageID(0x0005);
+	pdu->setURI((char*)"test",4);
 
-// send packet 
-ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
-~~~~~~~~~~~~
+	// send packet 
+	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
+~~~
+
 ...
 
-~~~~~~~~~~~~{.cpp}
+~~~{.cpp}
 	// receive packet
 	ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
 	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
@@ -26,7 +29,7 @@ ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
 		recvPDU->getURI(uriBuffer,URI_BUF_LEN,&recvURILen);
 		...
 	}
-~~~~~~~~~~~~
+~~~
 
 # Compilation
 
@@ -92,7 +95,7 @@ There are a couple of different ways to construct a PDU depending on whether you
 
 The simplest usage scenario hands control of memory allocation to the library:
 
-```C++
+~~~{.cpp}
 CoapPDU *pdu = new CoapPDU();
 ...
 pdu->setType(CoapPDU::COAP_CONFIRMABLE);
@@ -100,7 +103,8 @@ pdu->setCode(CoapPDU::COAP_GET);
 pdu->addOption(11,5,(uint8_t*)"hello");
 pdu->addOption(11,5,(uint8_t*)"there");
 pdu->addOption(11,6,(uint8_t*)"server");
-```
+~~~
+
 In this case you just call the default constructor. That's it. The library handles memory from there-on out. For example, when adding each of those options, the library will realloc the pdu to accomodate space for them. It will also shrink the PDU if something changes (like the token length) so that it always uses the minimum amount of memory.
 
 When you free the PDU, all data including the buffer is deleted. The PDU can also be reused as shown below.
@@ -114,7 +118,7 @@ There are two obvious reasons why you would do this:
 
 The first instance is a special case and requires some extra work. Just using an external buffer is as simple as follows:
 
-```C++
+~~~{.cpp}
 uint8_t *buffer[100];
 CoapPDU *pdu = new CoapPDU((uint8_t*)buffer,100,0);
 ...
@@ -123,15 +127,15 @@ pdu->setCode(CoapPDU::COAP_GET);
 pdu->addOption(11,5,(uint8_t*)"hello");
 pdu->addOption(11,5,(uint8_t*)"there");
 pdu->addOption(11,6,(uint8_t*)"server");
-```
+~~~
 
 The PDU is constructed as normal except that the memory of your buffer is used instead of allocated memory.
 
 A call such as this:
 
-```C++
+~~~{.cpp}
 pdu->addOption(11,5,(uint8_t*)"hello");
-```
+~~~
 
 Will fail if there is no space left in the buffer.
 
@@ -141,7 +145,7 @@ When you delete the object, the buffer is not freed. Hey, it's your buffer mannn
 
 Regardless of whether you constructed a PDU using either of the above methods, you can always reuse it:
 
-```C++
+~~~{.cpp}
 pdu->reset(); 
 ...
 pdu->setType(CoapPDU::COAP_CONFIRMABLE);
@@ -149,7 +153,7 @@ pdu->setCode(CoapPDU::COAP_GET);
 pdu->addOption(11,5,(uint8_t*)"hello");
 pdu->addOption(11,5,(uint8_t*)"there");
 pdu->addOption(11,6,(uint8_t*)"server");
-```
+~~~
 
 The only difference is that if the PDU was initially constructed using managed-memory, then it will continue to have managed-memory. Whereas if the PDU was constructed with an external buffer, then you are limited in space by the size of the buffer you used.
 
@@ -158,7 +162,7 @@ The only difference is that if the PDU was initially constructed using managed-m
 In this case you have a CoAP PDU in a buffer you just gobbled from a socket and want to read it:
 
 	
-```C++
+~~~{.cpp}
 uint8_t *buffer[100];
 int ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
 CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret,100);
@@ -166,7 +170,7 @@ if(recvPDU->validate()) {
 	recvPDU->printHuman();
 	// do your work
 }
-```
+~~~
 
 You must call CoapPDU::validate() and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.
 
