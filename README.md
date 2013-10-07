@@ -1,22 +1,23 @@
+/// @mainpage
 cantcoap
 ========
 
 CoAP implementation that focuses on simplicity by offering a minimal set of functions and straightforward interface.
 
-```C++
-	CoapPDU *pdu = new CoapPDU();
-	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
-	pdu->setCode(CoapPDU::COAP_GET);
-	pdu->setToken((uint8_t*)"\3\2\1\0",4);
-	pdu->setMessageID(0x0005);
-	pdu->setURI((char*)"test",4);
+~~~~~~~~~~~~{.cpp}
+CoapPDU *pdu = new CoapPDU();
+pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+pdu->setCode(CoapPDU::COAP_GET);
+pdu->setToken((uint8_t*)"\3\2\1\0",4);
+pdu->setMessageID(0x0005);
+pdu->setURI((char*)"test",4);
 
-	// send packet 
-	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
-```
+// send packet 
+ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
+~~~~~~~~~~~~
 ...
 
-```C++
+~~~~~~~~~~~~{.cpp}
 	// receive packet
 	ret = recvfrom(sockfd,&buffer,BUF_LEN,0,(sockaddr*)&recvAddr,&recvAddrLen);
 	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
@@ -24,7 +25,7 @@ CoAP implementation that focuses on simplicity by offering a minimal set of func
 		recvPDU->getURI(uriBuffer,URI_BUF_LEN,&recvURILen);
 		...
 	}
-```
+~~~~~~~~~~~~
 
 # Compilation
 
