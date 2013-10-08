@@ -179,11 +179,34 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!-- fragment --><p>You must call <a class="el" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">CoapPDU::validate()</a> and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.</p>
 <p>Note that the constructor is just a shorthand for the external-buffer-constructor explained above, and you can use the long form if you want. For example. you might want to use the long form if you have a buffer bigger than the PDU and you expect to reuse it.</p>
 <p>You can reuse this object by resetting it as above.</p>
-<h2>Setting options</h2>
-</div></div><!-- contents -->
+<p>If you reuse such an object, you need to set the PDU length manually because there is no way to deduce the PDU length using validate():</p>
+<div class="fragment"><div class="line"><span class="comment">// earlier</span></div>
+<div class="line"><span class="preprocessor">#define BUFLEN 500</span></div>
+<div class="line"><span class="preprocessor"></span><span class="keywordtype">char</span> buffer[BUFLEN];</div>
+<div class="line"><a class="code" href="classCoapPDU.html">CoapPDU</a> *recvPDU = <span class="keyword">new</span> <a class="code" href="classCoapPDU.html">CoapPDU</a>((uint8_t*)buffer,BUFLEN,BUFLEN);</div>
+<div class="line"></div>
+<div class="line">...</div>
+<div class="line"></div>
+<div class="line">while(1) {</div>
+<div class="line">        <span class="comment">// receive packet</span></div>
+<div class="line">        ret = sockfd,&amp;buffer,BUFLEN,0);</div>
+<div class="line">        <span class="keywordflow">if</span>(ret==-1) {</div>
+<div class="line">                INFO(<span class="stringliteral">&quot;Error receiving data&quot;</span>);</div>
+<div class="line">                <span class="comment">// handle error</span></div>
+<div class="line">        }</div>
+<div class="line"></div>
+<div class="line">        <span class="comment">// validate packet</span></div>
+<div class="line">        <span class="comment">// you should also check that ret doesn&#39;t exceed buffer length</span></div>
+<div class="line">        recvPDU-&gt;<a class="code" href="classCoapPDU.html#a1fb6272cbc6db25f00a86c496f32cc85" title="Set the PDU length to the length specified.">setPDULength</a>(ret);</div>
+<div class="line">        <span class="keywordflow">if</span>(recvPDU-&gt;<a class="code" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">validate</a>()!=1) {</div>
+<div class="line">                INFO(<span class="stringliteral">&quot;Malformed CoAP packet&quot;</span>);</div>
+<div class="line">                <span class="comment">// handle error</span></div>
+<div class="line">        }</div>
+<div class="line">}</div>
+</div><!-- fragment --> </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Oct 7 2013 14:40:05 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Oct 8 2013 14:59:44 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.1.2
 </small></address>

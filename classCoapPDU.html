@@ -145,22 +145,23 @@ Public Types</h2></td></tr>
 <b>COAP_OPTION_ETAG</b>, 
 <b>COAP_OPTION_IF_NONE_MATCH</b>, 
 <br/>
-&#160;&#160;<b>COAP_OPTION_URI_PORT</b> = 7, 
+&#160;&#160;<b>COAP_OPTION_OBSERVE</b>, 
+<b>COAP_OPTION_URI_PORT</b>, 
 <b>COAP_OPTION_LOCATION_PATH</b>, 
 <b>COAP_OPTION_URI_PATH</b> = 11, 
-<b>COAP_OPTION_CONTENT_FORMAT</b>, 
 <br/>
-&#160;&#160;<b>COAP_OPTION_MAX_AGE</b> = 14, 
+&#160;&#160;<b>COAP_OPTION_CONTENT_FORMAT</b>, 
+<b>COAP_OPTION_MAX_AGE</b> = 14, 
 <b>COAP_OPTION_URI_QUERY</b>, 
 <b>COAP_OPTION_ACCEPT</b> = 17, 
-<b>COAP_OPTION_LOCATION_QUERY</b> = 20, 
 <br/>
-&#160;&#160;<b>COAP_OPTION_BLOCK2</b> = 23, 
+&#160;&#160;<b>COAP_OPTION_LOCATION_QUERY</b> = 20, 
+<b>COAP_OPTION_BLOCK2</b> = 23, 
 <b>COAP_OPTION_BLOCK1</b> = 27, 
 <b>COAP_OPTION_SIZE2</b>, 
-<b>COAP_OPTION_PROXY_URI</b> = 35, 
 <br/>
-&#160;&#160;<b>COAP_OPTION_PROXY_SCHEME</b> = 39, 
+&#160;&#160;<b>COAP_OPTION_PROXY_URI</b> = 35, 
+<b>COAP_OPTION_PROXY_SCHEME</b> = 39, 
 <b>COAP_OPTION_SIZE1</b> = 60
 <br/>
  }</td></tr>
@@ -250,6 +251,8 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class
 <tr class="memitem:af02b5f6354c577957ab8a7fd307c11b1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af02b5f6354c577957ab8a7fd307c11b1"></a>
 uint8_t *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCoapPDU.html#af02b5f6354c577957ab8a7fd307c11b1">getPDUPointer</a> ()</td></tr>
 <tr class="memdesc:af02b5f6354c577957ab8a7fd307c11b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a pointer to the internal buffer. <br/></td></tr>
+<tr class="memitem:a1fb6272cbc6db25f00a86c496f32cc85"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCoapPDU.html#a1fb6272cbc6db25f00a86c496f32cc85">setPDULength</a> (int len)</td></tr>
+<tr class="memdesc:a1fb6272cbc6db25f00a86c496f32cc85"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the PDU length to the length specified.  <a href="#a1fb6272cbc6db25f00a86c496f32cc85"></a><br/></td></tr>
 <tr class="memitem:ad379ea8c694670b3dc95657fdc5ae1eb"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad379ea8c694670b3dc95657fdc5ae1eb"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCoapPDU.html#ad379ea8c694670b3dc95657fdc5ae1eb">print</a> ()</td></tr>
 <tr class="memdesc:ad379ea8c694670b3dc95657fdc5ae1eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dumps the PDU as a byte sequence to stdout. <br/></td></tr>
@@ -720,6 +723,31 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" hre
 
 </div>
 </div>
+<a class="anchor" id="a1fb6272cbc6db25f00a86c496f32cc85"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void CoapPDU::setPDULength </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>len</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Set the PDU length to the length specified. </p>
+<p>This is used when re-using a PDU container before calling <a class="el" href="classCoapPDU.html#a757ad675b619f32b81c8c435792f4f9c" title="Validates a PDU constructed using an external buffer.">CoapPDU::validate()</a> as it is not possible to deduce the length of a PDU since the payload has no length marker. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">len</td><td>The length of the PDU </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a class="anchor" id="adafa3fa099f4ba5248a05bb4a120bbed"></a>
 <div class="memitem">
 <div class="memproto">
@@ -902,7 +930,7 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" hre
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Oct 7 2013 14:40:05 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Oct 8 2013 14:59:44 for Can't CoAP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.1.2
 </small></address>
