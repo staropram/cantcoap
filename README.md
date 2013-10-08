@@ -178,7 +178,30 @@ Note that the constructor is just a shorthand for the external-buffer-constructo
 
 You can reuse this object by resetting it as above.
 
-## Setting options
+If you reuse such an object, you need to set the PDU length manually because there is no way to deduce the PDU length using validate():
 
+~~~{.cpp}
+	// earlier
+	#define BUFLEN 500
+	char buffer[BUFLEN];
+	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,BUFLEN,BUFLEN);
 
+	...
 
+	while(1) {
+		// receive packet
+		ret = sockfd,&buffer,BUFLEN,0);
+		if(ret==-1) {
+			INFO("Error receiving data");
+			// handle error
+		}
+
+		// validate packet
+		// you should also check that ret doesn't exceed buffer length
+		recvPDU->setPDULength(ret);
+		if(recvPDU->validate()!=1) {
+			INFO("Malformed CoAP packet");
+			// handle error
+		}
+	}
+~~~

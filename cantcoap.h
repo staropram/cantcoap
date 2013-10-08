@@ -172,6 +172,7 @@ class CoapPDU {
 		// pdu
 		int getPDULength();
 		uint8_t* getPDUPointer();
+		void setPDULength(int len);
 
 		// debugging
 		static void printBinary(uint8_t b);

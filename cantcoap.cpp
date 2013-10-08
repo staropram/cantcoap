@@ -391,6 +391,16 @@ uint8_t* CoapPDU::getPDUPointer() {
 	return _pdu;
 }
 
+/// Set the PDU length to the length specified.
+/**
+ * This is used when re-using a PDU container before calling CoapPDU::validate() as it
+ * is not possible to deduce the length of a PDU since the payload has no length marker.
+ * \param len The length of the PDU
+ */
+void CoapPDU::setPDULength(int len) {
+	_pduLength = len;
+}
+
 /// Shorthand function for setting a resource URI.
 /**
  * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
