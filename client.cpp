@@ -84,10 +84,10 @@ int main(int argc, char **argv) {
 	pdu->setURI((char*)"test",4);
 	pdu->addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,(uint8_t*)")");
 
-	// send packet to self
+	// send packet
 	ret = send(sockfd,pdu->getPDUPointer(),pdu->getPDULength(),0);
 	if(ret!=pdu->getPDULength()) {
-		INFO("Error sending packet to self.");
+		INFO("Error sending packet.");
 		perror(NULL);
 		return -1;
 	}

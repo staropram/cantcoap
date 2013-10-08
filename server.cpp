@@ -1,4 +1,12 @@
-// simple client example for cantcoap
+/// Server example for cantcoap that responds to the ETSI IoT CoAP Plugtests.
+/**
+ * This example waits for CoAP packets and responds accordingly.It is designed to work with 
+ * the ETSI IoT CoAP Plugtests (http://www.etsi.org/plugtests/coap/coap.htm). Put this on
+ * A public IP somewhere, and use the website http://coap.me to drive the tests.
+ *
+ * Note, the tests on coap.me are a bit odd.
+ */
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #define __USE_POSIX 1
@@ -48,7 +56,7 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 	response->setMessageID(request->getMessageID());
 	response->setToken(request->getTokenPointer(),request->getTokenLength());
 	//response->setToken((uint8_t*)"\1\16",2);
-	char *payload = (char*)"This is some radical shit right here";
+	char *payload = (char*)"This is a mundanely worded test payload.";
 
 	// respond differently, depending on method code
 	switch(request->getCode()) {
@@ -101,7 +109,8 @@ int gTestCallback(CoapPDU *request, int sockfd, struct sockaddr_storage *recvFro
 		addrLen
 	);
 	if(sent<0) {
-		DBG("Error: %s.",gai_strerror(sent));
+		DBG("Error sending packet: %ld.",sent);
+		perror(NULL);
 		return 1;
 	} else {
 		DBG("Sent: %ld",sent);
@@ -181,7 +190,6 @@ int main(int argc, char **argv) {
 	char buffer[BUF_LEN];
 	char uriBuffer[URI_BUF_LEN];
 	int recvURILen = 0;
-	CoapPDU *recvPDU = NULL;
 
 	// storage for handling receive address
 	struct sockaddr_storage recvAddr;
@@ -189,6 +197,9 @@ int main(int argc, char **argv) {
 	struct sockaddr_in *v4Addr;
 	struct sockaddr_in6 *v6Addr;
 	char straddr[INET6_ADDRSTRLEN];
+
+	// reuse the same PDU
+	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,BUF_LEN,BUF_LEN);
 
 	// just block and handle one packet at a time in a single thread
 	// you're not going to use this code for a production system are you ;)
@@ -214,10 +225,13 @@ int main(int argc, char **argv) {
 		}
 
 		// validate packet
-		recvPDU = new CoapPDU((uint8_t*)buffer,ret);
+		if(ret>BUF_LEN) {
+			INFO("PDU too large to fit in pre-allocated buffer");
+			continue;
+		}
+		recvPDU->setPDULength(ret);
 		if(recvPDU->validate()!=1) {
 			INFO("Malformed CoAP packet");
-			delete recvPDU;
 			continue;
 		}
 		INFO("Valid CoAP PDU received");
@@ -245,8 +259,10 @@ int main(int argc, char **argv) {
 		// no URI, handle cases
 
 		// code==0, no payload, this is a ping request, send RST
+		if(recvPDU->getPDULength()==0&&recvPDU->getCode()==0) {
+			INFO("CoAP ping request");
+		}
 
-		delete recvPDU;
 	}
 
     // free the hash table contents
