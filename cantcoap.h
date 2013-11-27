@@ -1,3 +1,7 @@
+#pragma once
+#pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
+
 /// Copyright (c) 2013, Ashley Mills.
 #include <unistd.h>
 #include <stdint.h>

@@ -1,19 +1,24 @@
-CC="gcc"
-LIBS=-L/usr/local/lib
+LIBS=-L/usr/local/lib -lcunit
 INCLUDE=-I/usr/local/include
-CPPFLAGS=-Wall -std=c++11 $(LIBS) $(INCLUDE) -DDEBUG
-CFLAGS=-Wall -std=c99 $(LIBS) $(INCLUDE) -DDEBUG
+
+CXX=clang++
+CXXFLAGS=-Wall -DDEBUG -std=c++11 $(LIBS) $(INCLUDE)
+
+CC=clang
+CFLAGS=-Wall -std=c99 -DDEBUG
+
 default: test client server
 
-test: cantcoap.o nethelper.o cantcoap.h -lcunit
-
-COAP_OBJS=cantcoap.h cantcoap.cpp
-
-cantcoap.o: $(COAP_OBJS)
+test: cantcoap.o nethelper.o test.cpp
 
 client: cantcoap.o nethelper.o client.cpp
 
 server: cantcoap.o nethelper.o server.cpp
 
+cantcoap.o: cantcoap.cpp
+
+nethelper.o: nethelper.c
+	$(CC) $(CFLAGS) $(INCLUDE) $(LIBS) -c $^ -o $@
+
 clean:
-	rm *.o;
+	rm *.o; rm test; rm server; rm client;
