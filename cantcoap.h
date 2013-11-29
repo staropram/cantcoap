@@ -1,26 +1,12 @@
 #pragma once
 #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
 #pragma clang diagnostic ignored "-Wconstant-logical-operand"
+#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
 
 /// Copyright (c) 2013, Ashley Mills.
 #include <unistd.h>
 #include <stdint.h>
-
-#define INFO(...) printf(__VA_ARGS__); printf("\r\n");
-#define INFOX(...); printf(__VA_ARGS__);
-#define ERR(...) printf(__VA_ARGS__); printf("\r\n");
-
-#ifdef DEBUG
-	#define DBG(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__); fprintf(stderr,"\r\n");
-	#define DBGX(...) fprintf(stderr,__VA_ARGS__);
-	#define DBGLX(...) fprintf(stderr,"%s:%d ",__FILE__,__LINE__); fprintf(stderr,__VA_ARGS__);
-	#define DBG_PDU() printBin();
-#else
-	#define DBG(...) {};
-	#define DBGX(...) {};
-	#define DBGLX(...) {};
-	#define DBG_PDU() {};
-#endif
+#include "dbg.h"
 
 #define COAP_HDR_SIZE 4
 #define COAP_OPTION_HDR_BYTE 1
