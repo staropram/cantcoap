@@ -101,14 +101,28 @@ int tinydtls_send_callback(
 
 	INFO("tinydtls_send_called");
 	int fd = *(int *)dtls_get_app_data(ctx);
-	return sendto(fd, data, len, MSG_DONTWAIT,
-	&session->addr.sa, session->size);
+	return sendto(fd, data, len, MSG_DONTWAIT,&session->addr.sa, session->size);
 }
 
-////////////// other stuff
+// called whenever a significant tinydtls event occurs
+// presently only on a successful connect and on a
+int tinydtls_event_callback(
+	struct dtls_context_t *ctx,
+	session_t *session, 
+   dtls_alert_level_t level,
+	unsigned short code) {
 
+	if(code==0) {
+		DBG("DTLS session ended.");
+		return 0;
+	}
+	
+	DBG("DTLS session established.");
+	return 0;
+}
 
-void do_recvfrom(evutil_socket_t sockfd, short event, void *arg) {
+// libevent recvfrom callback
+void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) {
 	// get the base
    //struct event_base *base = (struct event_base*)arg;
 	char buf[1024];
@@ -147,26 +161,8 @@ void do_recvfrom(evutil_socket_t sockfd, short event, void *arg) {
 	DBG("calling dtls_handle_message with context: %lx, session: %lx, buf: %lx, bytes: %d",
 		(unsigned long)dtls_context,(unsigned long)&session,(unsigned long)buf,bytes);
 	dtls_handle_message(dtls_context, &session, (uint8_t*)buf, bytes);
-
 }
 
-// called whenever a significant tinydtls event occurs
-// presently only on a successful connect and on a
-int tinydtls_event_callback(
-	struct dtls_context_t *ctx,
-	session_t *session, 
-   dtls_alert_level_t level,
-	unsigned short code) {
-
-	if(code==0) {
-		DBG("DTLS session ended.");
-		return 0;
-	} 
-	
-	DBG("DTLS session established.");
-
-	return 0;
-}
 
 int main(int argc, char **argv) {
 	// parse options	
@@ -205,7 +201,6 @@ int main(int argc, char **argv) {
 	// setup socket with specified address
 	listener = socket(bindAddr->ai_family,bindAddr->ai_socktype,bindAddr->ai_protocol);
    evutil_make_socket_nonblocking(listener);
-
    int one = 1;
    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
@@ -222,7 +217,14 @@ int main(int argc, char **argv) {
 	// setup a new event, tied to base, watching the file descriptor listener
 	// watch for read events, added event watching will persist until manual delete,
 	// on those events call do_accept with the event base passed as a parameter
-	listener_event = event_new(base, listener, EV_READ|EV_PERSIST, do_recvfrom, (void*)base);
+	listener_event = event_new(
+		base,
+		listener,
+		EV_READ|EV_PERSIST,
+		libevent_recvfrom_callback,
+		(void*)base
+	);
+
 	if(listener_event==NULL) {
 		DBG("Error creating listener event");
 		return -1;

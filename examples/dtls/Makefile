@@ -5,9 +5,12 @@ LIBS=$(LIB_EXTERNAL) -lc++ -levent -ltinydtls
 CFLAGS=-Wall -g -Wincompatible-pointer-types-discards-qualifiers
 INCLUDE=$(INCLUDE_EXTERNAL) -I./include  -L./
 CXX=clang++
-default: dtls_server
+default: dtls_server dtls_client
 
-dtls_server: ../../nethelper.o dtls_server.c 
+dtls_server: dtls_server.c ../../libcantcoap.a ../../nethelper.o
+	$(CXX) $(CFLAGS) $(INCLUDE) $^ $(LIBS) -o $@
+
+dtls_client: dtls_client.c ../../libcantcoap.a ../../nethelper.o
 	$(CXX) $(CFLAGS) $(INCLUDE) $^ $(LIBS) -o $@
 
 %.o : %.c

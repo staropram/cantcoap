@@ -1,35 +1,42 @@
-#include "config.h" 
-
-/* This is needed for apple */
-#define __APPLE_USE_RFC_3542
-
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <ctype.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/time.h>
-#include <arpa/inet.h>
+#define __USE_POSIX 1
 #include <netdb.h>
-#include <signal.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#include "global.h" 
-#include "debug.h" 
-#include "dtls.h" 
+#include <sys/socket.h>
+#include <fcntl.h>
 
+#include <assert.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+
+// libevent
+#include <event2/event.h>
+
+// tinydtls
+#include "tinydtls/config.h"
+extern "C" {
+#include "tinydtls/dtls.h"
+#include "tinydtls/debug.h"
+}
+
+// helpers
+#include "../../nethelper.h"
+#include "../../dbg.h"
+
+// coap
+#include "../../cantcoap.h"
 #define DEFAULT_PORT 20220
-#define PRINTF(...) printf(__VA_ARGS__)
-
-static char buf[200];
-static size_t len = 0;
-
-static str output_file = { 0, NULL }; /* output file name */
 
 static dtls_context_t *dtls_context = NULL;
 
+/*
 
 static const unsigned char ecdsa_priv_key[] = {
 			0x41, 0xC1, 0xCB, 0x6B, 0x51, 0x24, 0x7A, 0x14,
@@ -48,25 +55,6 @@ static const unsigned char ecdsa_pub_key_y[] = {
 			0x5A, 0x3C, 0x78, 0x69, 0x35, 0xA7, 0xCF, 0xAB,
 			0xE9, 0x3F, 0x98, 0x72, 0x09, 0xDA, 0xED, 0x0B,
 			0x4F, 0xAB, 0xC3, 0x6F, 0xC7, 0x72, 0xF8, 0x29};
-
-/* This function is the "key store" for tinyDTLS. It is called to
- * retrieve a key for the given identiy within this particular
- * session. */
-int
-get_psk_key(struct dtls_context_t *ctx,
-	    const session_t *session,
-	    const unsigned char *id, size_t id_len,
-	    const dtls_psk_key_t **result) {
-  static const dtls_psk_key_t psk = {
-    .id = (unsigned char *)"Client_identity",
-    .id_length = 15,
-    .key = (unsigned char *)"secretPSK",
-    .key_length = 9
-  };
-
-  *result = &psk;
-  return 0;
-}
 
 int
 get_ecdsa_key(struct dtls_context_t *ctx,
@@ -91,304 +79,283 @@ verify_ecdsa_key(struct dtls_context_t *ctx,
 		 size_t key_size) {
   return 0;
 }
+*/
 
-void
-try_send(struct dtls_context_t *ctx, session_t *dst) {
-  int res;
-  res = dtls_write(ctx, dst, (uint8 *)buf, len);
-  if (res >= 0) {
-    memmove(buf, buf + res, len - res);
-    len -= res;
-  }
+// libevent callback
+void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) {
+	// get the base
+   //struct event_base *base = (struct event_base*)arg;
+	char buf[1024];
+	char hostStr[128],servStr[128];
+	int hostStrLen = 128, servStrLen = 128;
+
+	INFO("Got an event on socket %d:%s%s%s%s",
+		(int) sockfd,
+		(event&EV_TIMEOUT) ? " timeout" : "",
+		(event&EV_READ)    ? " read" : "",
+		(event&EV_WRITE)   ? " write" : "",
+		(event&EV_SIGNAL)  ? " signal" : ""
+	);
+
+	session_t session;
+	memset(&session, 0, sizeof(session_t));
+	session.size = sizeof(session.addr);
+
+	int bytes = recvfrom(sockfd,(void*)&buf,(size_t)1024,0,
+			 &session.addr.sa, &session.size);
+
+	INFO("session address family: %d, size: %d",session.addr.sa.sa_family,session.size);
+
+	//(struct sockaddr *)&fromAddr,&fromAddrLen);
+	if(bytes>0) {
+		buf[bytes] = 0x00;
+		// try to get hostname and service
+		if(getnameinfo((struct sockaddr*)&session.addr.sa,session.size,hostStr,hostStrLen,servStr,servStrLen,0)==0) {
+			INFO("Received %d bytes from %s:%s",bytes,hostStr,servStr);
+		} else {
+			INFO("Received %d bytes from %s:%d",bytes,inet_ntoa(session.addr.sin.sin_addr),ntohs(session.addr.sin.sin_port));
+		}
+		INFO("Got: \"%s\"",buf);
+	}
+
+	DBG("calling dtls_handle_message with context: %lx, session: %lx, buf: %lx, bytes: %d",
+		(unsigned long)dtls_context,(unsigned long)&session,(unsigned long)buf,bytes);
+	dtls_handle_message(dtls_context, &session, (uint8_t*)buf, bytes);
 }
 
-void
-handle_stdin() {
-  if (fgets(buf + len, sizeof(buf) - len, stdin))
-    len += strlen(buf + len);
+///////// DTLS STUFF
+
+/* This function is the "key store" for tinyDTLS. It is called to
+ * retrieve a key for the given identiy within this particular
+ * session. */
+int tinydtls_getpsk_callback(
+	struct dtls_context_t *ctx,
+	const session_t *session,
+	const unsigned char *id,
+	size_t id_len,
+	const dtls_psk_key_t **result) {
+
+	DBG("Been asked to get PSK for %s",id);
+
+	// put the keys in a hash table too
+	static const dtls_psk_key_t psk = {
+		.id = (unsigned char *)"Client_identity",
+		.id_length = 15,
+		.key = (unsigned char *)"secretPSK",
+		.key_length = 9
+	};
+
+	// TODO
+	// store the keys in a hash table
+
+	*result = &psk;
+	return 0;
 }
 
-int
-read_from_peer(struct dtls_context_t *ctx, 
-	       session_t *session, uint8 *data, size_t len) {
-  size_t i;
-  for (i = 0; i < len; i++)
-    printf("%c", data[i]);
-  return 0;
+// this is called by tinydtls after it decrypts received data
+int tinydtls_read_callback(struct dtls_context_t *ctx, session_t *session, uint8 *data, size_t len) {
+	DBG("tinydtls_read_callback");
+
+	// extract coap response
+	return 0;
 }
 
-int
-send_to_peer(struct dtls_context_t *ctx, 
-	     session_t *session, uint8 *data, size_t len) {
+// this is called by tinydtls when it wants to send data
+// it is our job to actually send the data on its behalf
+int tinydtls_send_callback(
+	struct dtls_context_t *ctx, 
+	session_t *session, 
+	uint8 *data, size_t len) {
 
-  int fd = *(int *)dtls_get_app_data(ctx);
-  return sendto(fd, data, len, MSG_DONTWAIT,
-		&session->addr.sa, session->size);
+	INFO("tinydtls_send_called");
+	int fd = *(int *)dtls_get_app_data(ctx);
+	return sendto(fd, data, len, MSG_DONTWAIT,&session->addr.sa, session->size);
 }
 
-int
-dtls_handle_read(struct dtls_context_t *ctx) {
-  int fd;
-  session_t session;
-#define MAX_READ_BUF 2000
-  static uint8 buf[MAX_READ_BUF];
-  int len;
+session_t dst;
 
-  fd = *(int *)dtls_get_app_data(ctx);
-  
-  if (!fd)
-    return -1;
+// called whenever a significant tinydtls event occurs
+// presently only on a successful connect and on a
+int tinydtls_event_callback(
+	struct dtls_context_t *ctx,
+	session_t *session, 
+   dtls_alert_level_t level,
+	unsigned short code) {
 
-  memset(&session, 0, sizeof(session_t));
-  session.size = sizeof(session.addr);
-  len = recvfrom(fd, buf, MAX_READ_BUF, 0, 
-		 &session.addr.sa, &session.size);
-  
-  if (len < 0) {
-    perror("recvfrom");
-    return -1;
-  } else {
-    dtls_dsrv_log_addr(LOG_DEBUG, "peer", &session);
-    dtls_dsrv_hexdump_log(LOG_DEBUG, "bytes from peer", buf, len, 0);
-  }
+	// local
+	int sockfd = *(int *)dtls_get_app_data(ctx);
 
-  return dtls_handle_message(ctx, &session, buf, len);
-}    
+	if(code==0) {
+		DBG("DTLS session ended.");
+		return 0;
+	}
+	
+	DBG("DTLS session established.");
+	// construct CoAP packet
+	CoapPDU *pdu = new CoapPDU();
+	pdu->setVersion(1);
+	pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+	pdu->setCode(CoapPDU::COAP_GET);
+	pdu->setToken((uint8_t*)"\3\2\1\1",4);
+	pdu->setMessageID(0x0005);
+	pdu->setURI((char*)"test",4);
+	pdu->addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,(uint8_t*)")");
 
-static void dtls_handle_signal(int sig)
-{
-  dtls_free_context(dtls_context);
-  signal(sig, SIG_DFL);
-  kill(getpid(), sig);
-}
+	// send packet
+	int ret = dtls_write(ctx, &dst, pdu->getPDUPointer(), pdu->getPDULength());
+	if(ret!=pdu->getPDULength()) {
+		INFO("Error sending packet.");
+		perror(NULL);
+		return -1;
+	}
+	INFO("Packet sent");
 
-/* stolen from libcoap: */
-int 
-resolve_address(const char *server, struct sockaddr *dst) {
-  
-  struct addrinfo *res, *ainfo;
-  struct addrinfo hints;
-  static char addrstr[256];
-  int error;
+	// receive packet
+	char buffer[500];
+	ret = recv(sockfd,&buffer,500,0);
+	if(ret==-1) {
+		INFO("Error receiving data");
+		return -1;
+	}
 
-  memset(addrstr, 0, sizeof(addrstr));
-  if (server && strlen(server) > 0)
-    memcpy(addrstr, server, strlen(server));
-  else
-    memcpy(addrstr, "localhost", 9);
-
-  memset ((char *)&hints, 0, sizeof(hints));
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_family = AF_INET;
-
-  error = getaddrinfo(addrstr, NULL, &hints, &res);
-
-  if (error != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
-    return error;
-  }
-
-  for (ainfo = res; ainfo != NULL; ainfo = ainfo->ai_next) {
-
-    switch (ainfo->ai_family) {
-    case AF_INET6:
-    case AF_INET:
-
-      memcpy(dst, ainfo->ai_addr, ainfo->ai_addrlen);
-      return ainfo->ai_addrlen;
-    default:
-      ;
-    }
-  }
-
-  freeaddrinfo(res);
-  return -1;
-}
-
-/*---------------------------------------------------------------------------*/
-void
-usage( const char *program, const char *version) {
-  const char *p;
-
-  p = strrchr( program, '/' );
-  if ( p )
-    program = ++p;
-
-  fprintf(stderr, "%s v%s -- DTLS client implementation\n"
-	  "(c) 2011-2012 Olaf Bergmann <bergmann@tzi.org>\n\n"
-	  "usage: %s [-o file][-p port] [-v num] addr [port]\n"
-	  "\t-o file\t\toutput received data to this file (use '-' for STDOUT)\n"
-	  "\t-p port\t\tlisten on specified port (default is %d)\n"
-	  "\t-v num\t\tverbosity level (default: 3)\n",
-	   program, version, program, DEFAULT_PORT);
+	// validate packet
+	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
+	if(recvPDU->validate()!=1) {
+		INFO("Malformed CoAP packet");
+		return -1;
+	}
+	INFO("Valid CoAP PDU received");
+	recvPDU->printHuman();
+	
+	return 0;
 }
 
 static dtls_handler_t cb = {
-  .write = send_to_peer,
-  .read  = read_from_peer,
-  .event = NULL,
-  .get_psk_key = get_psk_key,
-  .get_ecdsa_key = get_ecdsa_key,
-  .verify_ecdsa_key = verify_ecdsa_key
+  .write = tinydtls_send_callback,
+  .read  = tinydtls_read_callback,
+  .event = tinydtls_event_callback,
+  .get_psk_key = tinydtls_getpsk_callback,
+  .get_ecdsa_key = NULL,
+  .verify_ecdsa_key = NULL 
 };
 
 #define DTLS_CLIENT_CMD_CLOSE "client:close"
 #define DTLS_CLIENT_CMD_RENEGOTIATE "client:renegotiate"
 
-int 
-main(int argc, char **argv) {
-  fd_set rfds, wfds;
-  struct timeval timeout;
-  unsigned short port = DEFAULT_PORT;
-  char port_str[NI_MAXSERV] = "0";
-  log_t log_level = LOG_WARN;
-  int fd, result;
-  int on = 1;
-  int opt, res;
-  session_t dst;
-
-  dtls_init();
-  snprintf(port_str, sizeof(port_str), "%d", port);
-
-  while ((opt = getopt(argc, argv, "p:o:v:")) != -1) {
-    switch (opt) {
-    case 'p' :
-      strncpy(port_str, optarg, NI_MAXSERV-1);
-      port_str[NI_MAXSERV - 1] = '\0';
-      break;
-    case 'o' :
-      output_file.length = strlen(optarg);
-      output_file.s = (unsigned char *)malloc(output_file.length + 1);
-      
-      if (!output_file.s) {
-	dsrv_log(LOG_CRIT, "cannot set output file: insufficient memory\n");
-	exit(-1);
-      } else {
-	/* copy filename including trailing zero */
-	memcpy(output_file.s, optarg, output_file.length + 1);
-      }
-      break;
-    case 'v' :
-      log_level = strtol(optarg, NULL, 10);
-      break;
-    default:
-      usage(argv[0], PACKAGE_VERSION);
-      exit(1);
-    }
-  }
-
-  dtls_set_log_level(log_level);
-  
-  if (argc <= optind) {
-    usage(argv[0], PACKAGE_VERSION);
-    exit(1);
-  }
-  
-  memset(&dst, 0, sizeof(session_t));
-  /* resolve destination address where server should be sent */
-  res = resolve_address(argv[optind++], &dst.addr.sa);
-  if (res < 0) {
-    dsrv_log(LOG_EMERG, "failed to resolve address\n");
-    exit(-1);
-  }
-  dst.size = res;
-
-  /* use port number from command line when specified or the listen
-     port, otherwise */
-  dst.addr.sin.sin_port = htons(atoi(optind < argc ? argv[optind++] : port_str));
-
-  
-  /* init socket and set it to non-blocking */
-  fd = socket(dst.addr.sa.sa_family, SOCK_DGRAM, 0);
-
-  if (fd < 0) {
-    dsrv_log(LOG_ALERT, "socket: %s\n", strerror(errno));
-    return 0;
-  }
-
-/*
-  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on) ) < 0) {
-    dsrv_log(LOG_ALERT, "setsockopt SO_REUSEADDR: %s\n", strerror(errno));
-  }
-  */
-
-#if 0
-  flags = fcntl(fd, F_GETFL, 0);
-  if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-    dsrv_log(LOG_ALERT, "fcntl: %s\n", strerror(errno));
-    goto error;
-  }
-#endif
-  on = 1;
-  /*
-#ifdef IPV6_RECVPKTINFO
-  if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on) ) < 0) {
-#else // IPV6_RECVPKTINFO 
-  if (setsockopt(fd, IPPROTO_IPV6, IPV6_PKTINFO, &on, sizeof(on) ) < 0) {
-#endif // IPV6_RECVPKTINFO 
-    dsrv_log(LOG_ALERT, "setsockopt IPV6_PKTINFO: %s\n", strerror(errno));
-  }
-  */
-
-  if (signal(SIGINT, dtls_handle_signal) == SIG_ERR) {
-    dsrv_log(LOG_ALERT, "An error occurred while setting a signal handler.\n");
-    return EXIT_FAILURE;
-  }
-
-  dtls_context = dtls_new_context(&fd);
-  if (!dtls_context) {
-    dsrv_log(LOG_EMERG, "cannot create context\n");
-    exit(-1);
-  }
-
-  dtls_set_handler(dtls_context, &cb);
-
-  dtls_connect(dtls_context, &dst);
-
-  while (1) {
-    FD_ZERO(&rfds);
-    FD_ZERO(&wfds);
-
-    FD_SET(fileno(stdin), &rfds);
-    FD_SET(fd, &rfds);
-    /* FD_SET(fd, &wfds); */
-    
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
-    
-    result = select(fd+1, &rfds, &wfds, 0, &timeout);
-    
-    if (result < 0) {		/* error */
-      if (errno != EINTR)
-	perror("select");
-    } else if (result == 0) {	/* timeout */
-    } else {			/* ok */
-      if (FD_ISSET(fd, &wfds))
-	/* FIXME */;
-      else if (FD_ISSET(fd, &rfds))
-	dtls_handle_read(dtls_context);
-      else if (FD_ISSET(fileno(stdin), &rfds))
-	handle_stdin();
-    }
-
-    if (len) {
-      if (len >= strlen(DTLS_CLIENT_CMD_CLOSE) &&
-	  !memcmp(buf, DTLS_CLIENT_CMD_CLOSE, strlen(DTLS_CLIENT_CMD_CLOSE))) {
-	printf("client: closing connection\n");
-	dtls_close(dtls_context, &dst);
-	len = 0;
-      } else if (len >= strlen(DTLS_CLIENT_CMD_RENEGOTIATE) &&
-	         !memcmp(buf, DTLS_CLIENT_CMD_RENEGOTIATE, strlen(DTLS_CLIENT_CMD_RENEGOTIATE))) {
-	printf("client: renegotiate connection\n");
-	dtls_renegotiate(dtls_context, &dst);
-	len = 0;
-      } else {
-	try_send(dtls_context, &dst);
-      }
-    }
-  }
-  
-  dtls_free_context(dtls_context);
-  exit(0);
+void failGracefully(int x) {
+	exit(x);
 }
 
+int main(int argc, char **argv) {
+
+	// parse options	
+	if(argc!=5) {
+		printf("USAGE\r\n   %s listenAddress listenPort remoteAddress remotePort\r\n",argv[0]);
+		return 0;
+	}
+
+	char *listenAddressString = argv[1];
+	char *listenPortString    = argv[2];
+	char *remoteAddressString = argv[3];
+	char *remotePortString    = argv[4];
+
+	// locals
+   evutil_socket_t listener_fd;
+	struct addrinfo *bindAddr;
+   struct event_base *base = NULL;
+   struct event *listener_event = NULL;
+
+	// libevent2 requires that you have an event base to which all events are tied
+   base = event_base_new();
+	if(!base) {
+		DBG("Error constructing event base");
+		return -1;
+	}
+
+	// setup bind address
+	INFO("Setting up bind address");
+	int ret = setupAddress(listenAddressString,listenPortString,&bindAddr,SOCK_DGRAM,AF_INET);
+	if(ret!=0) {
+		INFO("Error setting up bind address, exiting.");
+		return -1;
+	}
+
+	// iterate through returned structure to see what we got
+	printAddressStructures(bindAddr);
+
+	// setup socket
+	listener_fd = socket(bindAddr->ai_family,bindAddr->ai_socktype,bindAddr->ai_protocol);
+   evutil_make_socket_nonblocking(listener_fd);
+   int one = 1;
+   setsockopt(listener_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+
+	// call bind
+	DBG("Binding socket.");
+	if(bind(listener_fd,bindAddr->ai_addr,bindAddr->ai_addrlen)!=0) {
+		DBG("Error binding socket");
+		perror(NULL);
+		failGracefully(5);
+	}
+	
+	//
+	printAddress(bindAddr);
+
+	struct addrinfo *remoteAddress;
+	ret = setupAddress(remoteAddressString,remotePortString,&remoteAddress,SOCK_DGRAM,AF_INET);
+	if(ret!=0) {
+		INFO("Error setting up remote address, exiting.");
+		return -1;
+	}
+	memset(&dst, 0, sizeof(session_t));
+	dst.size = sizeof(sockaddr_in);
+	memcpy(&dst.addr.sa, &remoteAddress, dst.size);
+
+/*
+	// call connect to associate remote address with socket
+	ret = connect(listener_fd,remoteAddress->ai_addr,remoteAddress->ai_addrlen);
+	if(ret!=0) {
+		INFO("Error: %s.",gai_strerror(ret));
+		INFO("Error connecting to remote host.");
+		return -1;
+	}
+	printAddress(remoteAddress);
+	*/
+
+	// setup a new event, tied to base, watching the file descriptor listener
+	// watch for read events, added event watching will persist until manual delete,
+	// on those events call do_accept with the event base passed as a parameter
+	listener_event = event_new(
+		base,
+		listener_fd,
+		EV_READ|EV_PERSIST,
+		libevent_recvfrom_callback,
+		(void*)base
+	);
+
+	if(listener_event==NULL) {
+		DBG("Error creating listener event");
+		return -1;
+	}
+	event_add(listener_event, NULL);
+
+	// dtls stuff
+	dtls_init();
+	dtls_set_log_level(LOG_WARN);
+
+	session_t dst;
+	memset(&dst, 0, sizeof(session_t));
+
+	dtls_context = dtls_new_context(&listener_fd);
+	if(!dtls_context) {
+		dsrv_log(LOG_EMERG, "cannot create context\n");
+		exit(-1);
+	}
+
+	dtls_set_handler(dtls_context, &cb);
+
+	dtls_connect(dtls_context, &dst);
+
+	// start the event loop
+	event_base_dispatch(base);
+	return 0;
+}
