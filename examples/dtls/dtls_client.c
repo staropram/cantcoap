@@ -36,8 +36,6 @@ extern "C" {
 
 static dtls_context_t *dtls_context = NULL;
 
-/*
-
 static const unsigned char ecdsa_priv_key[] = {
 			0x41, 0xC1, 0xCB, 0x6B, 0x51, 0x24, 0x7A, 0x14,
 			0x43, 0x21, 0x43, 0x5B, 0x7A, 0x80, 0xE7, 0x14,
@@ -79,7 +77,6 @@ verify_ecdsa_key(struct dtls_context_t *ctx,
 		 size_t key_size) {
   return 0;
 }
-*/
 
 // libevent callback
 void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) {
@@ -156,6 +153,16 @@ int tinydtls_getpsk_callback(
 int tinydtls_read_callback(struct dtls_context_t *ctx, session_t *session, uint8 *data, size_t len) {
 	DBG("tinydtls_read_callback");
 
+	// validate packet
+	CoapPDU *recvPDU = new CoapPDU(data,len,len);
+	if(recvPDU->validate()!=1) {
+		INFO("Malformed CoAP packet");
+		return -1;
+	}
+	INFO("Valid CoAP PDU received");
+	recvPDU->printHuman();
+	delete recvPDU;
+
 	// extract coap response
 	return 0;
 }
@@ -172,18 +179,15 @@ int tinydtls_send_callback(
 	return sendto(fd, data, len, MSG_DONTWAIT,&session->addr.sa, session->size);
 }
 
-session_t dst;
+session_t g_dst;
 
 // called whenever a significant tinydtls event occurs
-// presently only on a successful connect and on a
+// presently only on a successful connect and on connection termination
 int tinydtls_event_callback(
 	struct dtls_context_t *ctx,
 	session_t *session, 
    dtls_alert_level_t level,
 	unsigned short code) {
-
-	// local
-	int sockfd = *(int *)dtls_get_app_data(ctx);
 
 	if(code==0) {
 		DBG("DTLS session ended.");
@@ -191,6 +195,7 @@ int tinydtls_event_callback(
 	}
 	
 	DBG("DTLS session established.");
+
 	// construct CoAP packet
 	CoapPDU *pdu = new CoapPDU();
 	pdu->setVersion(1);
@@ -202,30 +207,13 @@ int tinydtls_event_callback(
 	pdu->addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,(uint8_t*)")");
 
 	// send packet
-	int ret = dtls_write(ctx, &dst, pdu->getPDUPointer(), pdu->getPDULength());
+	int ret = dtls_write(ctx, &g_dst, pdu->getPDUPointer(), pdu->getPDULength());
 	if(ret!=pdu->getPDULength()) {
 		INFO("Error sending packet.");
 		perror(NULL);
 		return -1;
 	}
 	INFO("Packet sent");
-
-	// receive packet
-	char buffer[500];
-	ret = recv(sockfd,&buffer,500,0);
-	if(ret==-1) {
-		INFO("Error receiving data");
-		return -1;
-	}
-
-	// validate packet
-	CoapPDU *recvPDU = new CoapPDU((uint8_t*)buffer,ret);
-	if(recvPDU->validate()!=1) {
-		INFO("Malformed CoAP packet");
-		return -1;
-	}
-	INFO("Valid CoAP PDU received");
-	recvPDU->printHuman();
 	
 	return 0;
 }
@@ -300,26 +288,17 @@ int main(int argc, char **argv) {
 	//
 	printAddress(bindAddr);
 
+	// construct the remote address
 	struct addrinfo *remoteAddress;
 	ret = setupAddress(remoteAddressString,remotePortString,&remoteAddress,SOCK_DGRAM,AF_INET);
 	if(ret!=0) {
 		INFO("Error setting up remote address, exiting.");
 		return -1;
 	}
-	memset(&dst, 0, sizeof(session_t));
-	dst.size = sizeof(sockaddr_in);
-	memcpy(&dst.addr.sa, &remoteAddress, dst.size);
-
-/*
-	// call connect to associate remote address with socket
-	ret = connect(listener_fd,remoteAddress->ai_addr,remoteAddress->ai_addrlen);
-	if(ret!=0) {
-		INFO("Error: %s.",gai_strerror(ret));
-		INFO("Error connecting to remote host.");
-		return -1;
-	}
-	printAddress(remoteAddress);
-	*/
+	// copy the remote address into a tinydtls session_t struct
+	memset(&g_dst, 0, sizeof(session_t));
+	g_dst.size = sizeof(sockaddr_in);
+	memcpy(&g_dst.addr, remoteAddress->ai_addr, g_dst.size);
 
 	// setup a new event, tied to base, watching the file descriptor listener
 	// watch for read events, added event watching will persist until manual delete,
@@ -342,8 +321,6 @@ int main(int argc, char **argv) {
 	dtls_init();
 	dtls_set_log_level(LOG_WARN);
 
-	session_t dst;
-	memset(&dst, 0, sizeof(session_t));
 
 	dtls_context = dtls_new_context(&listener_fd);
 	if(!dtls_context) {
@@ -353,7 +330,7 @@ int main(int argc, char **argv) {
 
 	dtls_set_handler(dtls_context, &cb);
 
-	dtls_connect(dtls_context, &dst);
+	dtls_connect(dtls_context, &g_dst);
 
 	// start the event loop
 	event_base_dispatch(base);

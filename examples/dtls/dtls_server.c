@@ -88,8 +88,23 @@ int tinydtls_read_callback(struct dtls_context_t *ctx, session_t *session, uint8
 		return len;
 	}
 
-	// at present we just echo the data
-	return dtls_write(ctx, session, data, len);
+	// otherwise the data should be a CoAP PDU
+	// try and receive it
+	CoapPDU *recvPDU = new CoapPDU(data,len,len);
+	if(recvPDU->validate()) {
+		INFO("Valid CoAP PDU received");
+		recvPDU->printHuman();
+	} else {
+		INFO("Invalid CoAP PDU received");
+	}
+
+	// at present just send an ACK, reuse the same PDU and space
+	recvPDU->reset();
+	recvPDU->setVersion(1);
+	recvPDU->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
+	dtls_write(ctx, session, data, recvPDU->getPDULength());
+	delete recvPDU;
+	return 0;
 }
 
 // this is called by tinydtls when it wants to send data
