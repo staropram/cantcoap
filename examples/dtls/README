@@ -1,13 +1,11 @@
-These examples use libevent2 and tinydtls.o
+These examples use libevent2 and tinydtls
 
-libevent2 is used for efficient handling of incoming requests on the server.
+http://libevent.org/
 
-The client is assumed to be more lightweight so doesn't use libevent2, but as
-you will observe, in CoAP "client" and "server" are strange terms because 
-the entities are more like peers. So you can use the server setup for a client
-if you want.
+http://sourceforge.net/projects/tinydtls/
 
+libevent2 is used for efficient handling of incoming UDP packets on client and server.
 
-tinydtls provides basic encryption. At present I only illustrate the use of 
-a pre-shared key, but tinydtls also supports raw key pairs, so I will add
-this in at a later date
+tinydtls provides basic authentication, encryption, and integrity.
+
+At present I only illustrate the use of a pre-shared key (TLS_PSK_WITH_AES_128_CCM_8).

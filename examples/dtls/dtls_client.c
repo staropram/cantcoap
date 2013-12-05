@@ -56,8 +56,9 @@ static const unsigned char ecdsa_pub_key_y[] = {
 
 int
 get_ecdsa_key(struct dtls_context_t *ctx,
-	      const session_t *session,
+			const session_t *session,
 	      const dtls_ecdsa_key_t **result) {
+
   static const dtls_ecdsa_key_t ecdsa_key = {
     .curve = DTLS_ECDH_CURVE_SECP256R1,
     .priv_key = ecdsa_priv_key,
@@ -80,8 +81,6 @@ verify_ecdsa_key(struct dtls_context_t *ctx,
 
 // libevent callback
 void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) {
-	// get the base
-   //struct event_base *base = (struct event_base*)arg;
 	char buf[1024];
 	char hostStr[128],servStr[128];
 	int hostStrLen = 128, servStrLen = 128;
@@ -186,7 +185,7 @@ session_t g_dst;
 int tinydtls_event_callback(
 	struct dtls_context_t *ctx,
 	session_t *session, 
-   dtls_alert_level_t level,
+	dtls_alert_level_t level,
 	unsigned short code) {
 
 	if(code==0) {
@@ -248,13 +247,13 @@ int main(int argc, char **argv) {
 	char *remotePortString    = argv[4];
 
 	// locals
-   evutil_socket_t listener_fd;
+	evutil_socket_t listener_fd;
 	struct addrinfo *bindAddr;
-   struct event_base *base = NULL;
-   struct event *listener_event = NULL;
+	struct event_base *base = NULL;
+	struct event *listener_event = NULL;
 
 	// libevent2 requires that you have an event base to which all events are tied
-   base = event_base_new();
+	base = event_base_new();
 	if(!base) {
 		DBG("Error constructing event base");
 		return -1;
@@ -273,9 +272,9 @@ int main(int argc, char **argv) {
 
 	// setup socket
 	listener_fd = socket(bindAddr->ai_family,bindAddr->ai_socktype,bindAddr->ai_protocol);
-   evutil_make_socket_nonblocking(listener_fd);
-   int one = 1;
-   setsockopt(listener_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	evutil_make_socket_nonblocking(listener_fd);
+	int one = 1;
+	setsockopt(listener_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
 	// call bind
 	DBG("Binding socket.");

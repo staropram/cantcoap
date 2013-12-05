@@ -33,16 +33,15 @@ extern "C" {
 // coap
 #include "../../cantcoap.h"
 
-#define MAX_LINE 16384
-
-dtls_context_t *dtls_context = NULL;
-
-void failGracefully(int x) { exit(x); }
+// globals
 
 ///////// DTLS STUFF
+dtls_context_t *g_dtls_context = NULL;
+#define DTLS_SERVER_CMD_CLOSE "server:close"
+#define DTLS_SERVER_CMD_RENEGOTIATE "server:renegotiate"
 
 /* This function is the "key store" for tinyDTLS. It is called to
- * retrieve a key for the given identiy within this particular
+ * retrieve a key for the given identity within this particular
  * session. */
 int tinydtls_getpsk_callback(
 	struct dtls_context_t *ctx,
@@ -53,7 +52,7 @@ int tinydtls_getpsk_callback(
 
 	DBG("Been asked to get PSK for %s",id);
 
-	// put the keys in a hash table too
+	// for this example there is one single key
 	static const dtls_psk_key_t psk = {
 		.id = (unsigned char *)"Client_identity",
 		.id_length = 15,
@@ -61,17 +60,19 @@ int tinydtls_getpsk_callback(
 		.key_length = 9
 	};
 
-	// TODO
-	// store the keys in a hash table
+	// NOTE
+	// A more realistic approach would be to store the keys
+	// in the hash table and retrieve them using the identity.
+	// Interfacing with a keystore might make sense too.
 
 	*result = &psk;
 	return 0;
 }
 
-#define DTLS_SERVER_CMD_CLOSE "server:close"
-#define DTLS_SERVER_CMD_RENEGOTIATE "server:renegotiate"
 
-// this is called by tinydtls after it decrypts received data
+// this is called by tinydtls after the DTLS handshake is finished, every
+// time it receives application data. tinydtls decrypts the application data and
+// passes it here
 int tinydtls_read_callback(struct dtls_context_t *ctx, session_t *session, uint8 *data, size_t len) {
 	DBG("tinydtls_read_callback");
 
@@ -98,7 +99,7 @@ int tinydtls_read_callback(struct dtls_context_t *ctx, session_t *session, uint8
 		INFO("Invalid CoAP PDU received");
 	}
 
-	// at present just send an ACK, reuse the same PDU and space
+	// at present just send an ACK, using the same PDU and space
 	recvPDU->reset();
 	recvPDU->setVersion(1);
 	recvPDU->setType(CoapPDU::COAP_ACKNOWLEDGEMENT);
@@ -120,11 +121,11 @@ int tinydtls_send_callback(
 }
 
 // called whenever a significant tinydtls event occurs
-// presently only on a successful connect and on a
+// presently only on a successful connect and on a session termination
 int tinydtls_event_callback(
 	struct dtls_context_t *ctx,
 	session_t *session, 
-   dtls_alert_level_t level,
+	dtls_alert_level_t level,
 	unsigned short code) {
 
 	if(code==0) {
@@ -136,10 +137,10 @@ int tinydtls_event_callback(
 	return 0;
 }
 
-// libevent recvfrom callback
+// called by libevent whenever a read occurs on our UDP socket
+// it is our job to pass the data to tinydtls for handling
 void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) {
 	// get the base
-   //struct event_base *base = (struct event_base*)arg;
 	char buf[1024];
 	char hostStr[128],servStr[128];
 	int hostStrLen = 128, servStrLen = 128;
@@ -156,8 +157,7 @@ void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) 
 	memset(&session, 0, sizeof(session_t));
 	session.size = sizeof(session.addr);
 
-	int bytes = recvfrom(sockfd,(void*)&buf,(size_t)1024,0,
-			 &session.addr.sa, &session.size);
+	int bytes = recvfrom(sockfd,(void*)&buf,(size_t)1024,0,&session.addr.sa, &session.size);
 
 	INFO("session address family: %d, size: %d",session.addr.sa.sa_family,session.size);
 
@@ -174,10 +174,9 @@ void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) 
 	}
 
 	DBG("calling dtls_handle_message with context: %lx, session: %lx, buf: %lx, bytes: %d",
-		(unsigned long)dtls_context,(unsigned long)&session,(unsigned long)buf,bytes);
-	dtls_handle_message(dtls_context, &session, (uint8_t*)buf, bytes);
+		(unsigned long)g_dtls_context,(unsigned long)&session,(unsigned long)buf,bytes);
+	dtls_handle_message(g_dtls_context, &session, (uint8_t*)buf, bytes);
 }
-
 
 int main(int argc, char **argv) {
 	// parse options	
@@ -190,23 +189,24 @@ int main(int argc, char **argv) {
 	char *listenPortString    = argv[2];
 
 	// locals
-   evutil_socket_t listener;
+	evutil_socket_t listener;
 	struct addrinfo *bindAddr;
-   struct event_base *base = NULL;
-   struct event *listener_event = NULL;
+	struct event_base *base = NULL;
+	struct event *listener_event = NULL;
+   int one = 1;
 
 	// libevent2 requires that you have an event base to which all events are tied
    base = event_base_new();
 	if(!base) {
 		DBG("Error constructing event base");
-		return -1;
+		exit(1);
 	}
 
 	// get an address structure for the listening port
 	int ret = setupAddress(listenAddressString,listenPortString,&bindAddr,SOCK_DGRAM,AF_INET);
 	INFO("Setting up bind address");
 	if(ret!=0) {
-		INFO("Error setting up bind address, exiting. ");
+		DBG("Error setting up bind address, exiting. ");
 		exit(1);
 	}
 
@@ -216,7 +216,6 @@ int main(int argc, char **argv) {
 	// setup socket with specified address
 	listener = socket(bindAddr->ai_family,bindAddr->ai_socktype,bindAddr->ai_protocol);
    evutil_make_socket_nonblocking(listener);
-   int one = 1;
    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
 	// call bind to "listen" on socket
@@ -224,14 +223,14 @@ int main(int argc, char **argv) {
 	if(bind(listener,bindAddr->ai_addr,bindAddr->ai_addrlen)!=0) {
 		DBG("Error binding socket");
 		perror(NULL);
-		failGracefully(5);
+		exit(1);
 	}
 
 	printAddress(bindAddr);
 
 	// setup a new event, tied to base, watching the file descriptor listener
 	// watch for read events, added event watching will persist until manual delete,
-	// on those events call do_accept with the event base passed as a parameter
+	// on those events call libevent_recvfrom_callback with the event base passed as a parameter
 	listener_event = event_new(
 		base,
 		listener,
@@ -252,7 +251,7 @@ int main(int argc, char **argv) {
 	// DTLS stuff
 	dtls_init();
 	dtls_set_log_level(LOG_WARN);
-	dtls_context = dtls_new_context(&listener);
+	g_dtls_context = dtls_new_context(&listener);
 
 	// setup callback handlers for DTLS
 	static dtls_handler_t cb = {
@@ -263,7 +262,7 @@ int main(int argc, char **argv) {
 	  .get_ecdsa_key = NULL,							// called in the case that an ECDSA key is used to get it
 	  .verify_ecdsa_key = NULL							// called to verify an ECDSA key
 	};
-	dtls_set_handler(dtls_context, &cb);
+	dtls_set_handler(g_dtls_context, &cb);
 
 	// start the event loop
 	event_base_dispatch(base);
