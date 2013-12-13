@@ -1,5 +1,5 @@
-LIB_EXTERNAL=-L/usr/local/lib/event2 -L/home/ash/lib
-INCLUDE_EXTERNAL=-I/usr/local/include/event2 -I/home/ash/include
+LIB_EXTERNAL=-L/usr/local/lib/event2 -L$(HOME)/lib
+INCLUDE_EXTERNAL=-I/usr/local/include/event2 -I/$(HOME)/include
 
 LIBS=$(LIB_EXTERNAL) -lc++ -levent -ltinydtls
 CFLAGS=-Wall -g -Wincompatible-pointer-types-discards-qualifiers

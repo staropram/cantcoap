@@ -403,6 +403,14 @@ void CoapPDU::setPDULength(int len) {
 
 /// Shorthand function for setting a resource URI.
 /**
+ * Calls CoapPDU::setURI(uri,strlen(uri).
+ */
+int CoapPDU::setURI(char *uri) {
+	return setURI(uri,strlen(uri));
+}
+
+/// Shorthand function for setting a resource URI.
+/**
  * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
  * The options are added to the PDU.
  * 
@@ -494,10 +502,21 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	free(uriBuf);
 	return 0;
 }
+/// Shorthand for adding a URI QUERY to the option list.
+/**
+ * Adds a new option to the CoAP PDU that encodes a URI_QUERY.
+ *
+ * \param query The uri query to encode.
+ * \return 0 on success, 1 on failure.
+ */
+int CoapPDU::addURIQuery(char *query) {
+	return addOption(COAP_OPTION_URI_QUERY,strlen(query),(uint8_t*)query);
+}
 
 /// Concatenates any URI_PATH elements into a single string.
 /**
  * Parses the PDU options and extracts all URI_PATH elements, concatenating them into a single string with slash separators.
+ * The produced string will be null terminated.
  * 
  * \param dst Buffer into which to copy the concatenated path elements.
  * \param dstlen Length of buffer.

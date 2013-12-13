@@ -1,7 +1,8 @@
 #pragma once
 #include <stdio.h>
 
-#define DEBUG 1
+//#define DEBUG 1
+#undef DEBUG
 
 #define DBG_NEWLINE "\n"
 

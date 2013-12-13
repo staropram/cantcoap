@@ -1,1 +1,8 @@
 html/
+*.o
+libcantcoap.a
+test
+examples/plain/client
+examples/plain/server
+examples/dtls/dtls_server
+examples/dtls/dtls_client

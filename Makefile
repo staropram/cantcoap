@@ -1,25 +1,27 @@
-LIB_INSTALL=~/lib
-INCLUDE_INSTALL=~/include
+LIB_INSTALL=$(HOME)/lib
+INCLUDE_INSTALL=$(HOME)/include
 
-LIBS=-L/usr/local/lib -lcunit
-INCLUDE=-I/usr/local/include
+LIBS=-L/usr/local/lib -L/usr/lib/ -L. -lcunit
+INCLUDE=-I/usr/local/include -I/usr/include
 
-#CXX=g++49
+#CXX=g++
 CXX=clang++
-CXXFLAGS=-Wall -DDEBUG -std=c++11 $(LIBS) $(INCLUDE)
+CXXFLAGS=-Wall -DDEBUG -std=c++11
 
-#CC=gcc49
+#CC=gcc
 CC=clang
 CFLAGS=-Wall -std=c99 -DDEBUG
 
 default: nethelper.o staticlib test
 
 test: libcantcoap.a test.cpp
+	$(CXX) $(CXXFLAGS) test.cpp -o test -lcantcoap $(LIBS) $(INCLUDE)
 
 cantcoap.o: cantcoap.cpp
+	$(CXX) $(CXXFLAGS) $^ -c -o $@ $(LIBS) $(INCLUDE)
 
 nethelper.o: nethelper.c
-	$(CC) $(CFLAGS) $(INCLUDE) $(LIBS) -c $^ -o $@
+	$(CC) $(CFLAGS) -c $^ -c -o $@ $(INCLUDE) $(LIBS)
 
 staticlib: libcantcoap.a
 
