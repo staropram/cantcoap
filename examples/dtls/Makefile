@@ -1,7 +1,7 @@
 LIB_EXTERNAL=-L/usr/local/lib/event2 -L$(HOME)/lib
 INCLUDE_EXTERNAL=-I/usr/local/include/event2 -I/$(HOME)/include
 
-LIBS=$(LIB_EXTERNAL) -lc++ -levent -ltinydtls
+LIBS=$(LIB_EXTERNAL) -levent -ltinydtls
 CFLAGS=-Wall -g -Wincompatible-pointer-types-discards-qualifiers
 INCLUDE=$(INCLUDE_EXTERNAL) -I./include  -L./
 CXX=clang++
