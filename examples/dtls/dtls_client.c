@@ -128,18 +128,13 @@ void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) 
 
 /**
  * DTLS key management callback.
- * This function is used to manage the pre-shared keys used to authenticate servers and for retrieving the identity
- * of the client itself, in order to send to the server so that the server knows who it is talking to. 
- * Thus, it has two invocations by tinydtls:
+ * This function is used to manage the pre-shared keys and identities used to authenticate self to others and others to self.
+ * It has two invocations by tinydtls:
  *
- * 1. The client needs to get it's own identity to send to the server, in this case
- * 	the ID passed will be NULL, and the function should set a dtls_psk_key_t structure
- * 	which provides the client's identity. It isn't necessary to specify a key in this case.
- *    The client will send this ID in the "key exchange" part of the DTLS handshake.
- * 2. The client wants to know the correct PSK to use for a given server, in this case
- *    id will not be NULL and will instead be Ithe D that the server has provided in the "key exchange"
- *    part of the DTLS handshake. The client must retrieve the correct key, and fill in the
- *    key part of the dtls_psk_key_t structure.
+ * 1. We are acting as a server, a client has connected to us and we need to send it our ID
+ *    In this case tinydtls asks for our identity by setting id to NULL.
+ * 2. We are a client conneting to a server, the client has identified itself with an ID
+ *    and we need to tell tinydtls which key to use with this peer.
  */
 int tinydtls_getpsk_callback(
 	struct dtls_context_t *ctx,
@@ -150,35 +145,30 @@ int tinydtls_getpsk_callback(
 
 	DBG("Been asked to get PSK for %s",id);
 
-	// this is the key to use with the server whose id is "Server_identity"
-	static const dtls_psk_key_t server_psk = {
-		.id = (unsigned char *)"Server_identity",
+	// this is out identity, we send this to the server in the DTLS handshake so it knows which key to use for us
+	static const dtls_psk_key_t client_psk = {
+		.id = (unsigned char *)"Client_identity",
 		.id_length = 15,
 		.key = (unsigned char *)"secretPSK",
 		.key_length = 9
 	};
 
-	// this is out identity, we send this to the server in the DTLS handshake so it knows which key to use for us
-	static const dtls_psk_key_t client_psk = {
-		.id = (unsigned char *)"Client_identity",
-		.id_length = 15,
-		.key = NULL,
-		.key_length = 0
-	};
-
-	// TODO, cause handshake to fail if server key identity cannot be found
-	// use a hash table to store the identities, or maybe an external entity, perhaps even LDAP
 
 	// when id is null, tinydtls wants our identity to use in the handshake
+	// this won't happen for the client because nobody should connect to us (maybe return NULL? XXX)
 	if(id==NULL) {
 		// this is the self identity
 		*result = &client_psk;
 		return 0;
 	}
 
-	// otherwise tinydtls wants the PSK to use for communication with the server
-	// if you are communicating with multiple servers, you might want to use different keys for different servers
-	*result = &server_psk;
+	// chose the correct key based on the server's identity
+	if(strcmp((char*)id,"Server_identity")==0) {
+		*result = &client_psk;
+	}
+
+	// TODO, cause handshake to fail if server key identity cannot be found
+	// use a hash table to store the identities, or maybe an external entity, perhaps even LDAP
 	return 0;
 }
 

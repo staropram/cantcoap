@@ -17,4 +17,4 @@ dtls_client: dtls_client.c ../../libcantcoap.a ../../nethelper.o
 	$(CXX) $< $(CFLAGS) $(INCLUDE) -c -o $@
 
 clean:
-	rm *.o; rm dtls_server; 
+	rm *.o; rm dtls_server; rm dtls_client;
