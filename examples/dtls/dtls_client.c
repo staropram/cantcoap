@@ -133,7 +133,7 @@ void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) 
  *
  * 1. We are acting as a server, a client has connected to us and we need to send it our ID
  *    In this case tinydtls asks for our identity by setting id to NULL.
- * 2. We are a client conneting to a server, the client has identified itself with an ID
+ * 2. We are a client connecting to a server, the server has identified itself with an ID
  *    and we need to tell tinydtls which key to use with this peer.
  */
 int tinydtls_getpsk_callback(
