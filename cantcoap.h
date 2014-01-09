@@ -64,7 +64,8 @@ class CoapPDU {
 			COAP_BAD_GATEWAY,
 			COAP_SERVICE_UNAVAILABLE,
 			COAP_GATEWAY_TIMEOUT,
-			COAP_PROXYING_NOT_SUPPORTED
+			COAP_PROXYING_NOT_SUPPORTED,
+			COAP_UNDEFINED_CODE=0xFF
 		};
 
 		/// CoAP option numbers.
@@ -135,6 +136,7 @@ class CoapPDU {
 		// message code
 		void setCode(CoapPDU::Code code);
 		CoapPDU::Code getCode();
+		CoapPDU::Code httpStatusToCode(int httpStatus);
 
 		// message ID
 		int setMessageID(uint16_t messageID);

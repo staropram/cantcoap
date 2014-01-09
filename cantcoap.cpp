@@ -786,6 +786,70 @@ CoapPDU::Code CoapPDU::getCode() {
 	return (CoapPDU::Code)_pdu[1];
 }
 
+
+/// Converts a http status code as an integer, to a CoAP code.
+/**
+ * \param httpStatus the HTTP status code as an integer (e.g 200)
+ * \return The correct corresponding CoapPDU::Code on success,
+ * CoapPDU::COAP_UNDEFINED_CODE on failure.
+ */
+CoapPDU::Code CoapPDU::httpStatusToCode(int httpStatus) {
+	switch(httpStatus) {
+		case 1:
+			return CoapPDU::COAP_GET;
+		case 2:
+			return CoapPDU::COAP_POST;
+		case 3:
+			return CoapPDU::COAP_PUT;
+		case 4:
+			return CoapPDU::COAP_DELETE;
+		case 201:
+			return CoapPDU::COAP_CREATED;
+		case 202:
+			return CoapPDU::COAP_DELETED;
+		case 203:
+			return CoapPDU::COAP_VALID;
+		case 204:
+			return CoapPDU::COAP_CHANGED;
+		case 205:
+			return CoapPDU::COAP_CONTENT;
+		case 400:
+			return CoapPDU::COAP_BAD_REQUEST;
+		case 401:
+			return CoapPDU::COAP_UNAUTHORIZED;
+		case 402:
+			return CoapPDU::COAP_BAD_OPTION;
+		case 403:
+			return CoapPDU::COAP_FORBIDDEN;
+		case 404:
+			return CoapPDU::COAP_NOT_FOUND;
+		case 405:
+			return CoapPDU::COAP_METHOD_NOT_ALLOWED;
+		case 406:
+			return CoapPDU::COAP_NOT_ACCEPTABLE;
+		case 412:
+			return CoapPDU::COAP_PRECONDITION_FAILED;
+		case 413:
+			return CoapPDU::COAP_REQUEST_ENTITY_TOO_LARGE;
+		case 415:
+			return CoapPDU::COAP_UNSUPPORTED_CONTENT_FORMAT;
+		case 500:
+			return CoapPDU::COAP_INTERNAL_SERVER_ERROR;
+		case 501:
+			return CoapPDU::COAP_NOT_IMPLEMENTED;
+		case 502:
+			return CoapPDU::COAP_BAD_GATEWAY;
+		case 503:
+			return CoapPDU::COAP_SERVICE_UNAVAILABLE;
+		case 504:
+			return CoapPDU::COAP_GATEWAY_TIMEOUT;
+		case 505:
+			return CoapPDU::COAP_PROXYING_NOT_SUPPORTED;
+		default:
+			return CoapPDU::COAP_UNDEFINED_CODE;
+	}
+}
+
 /// Set messageID to the supplied value.
 /**
  * \param messageID A 16bit message id.
@@ -1557,6 +1621,9 @@ void CoapPDU::printHuman() {
 		break;
 		case COAP_PROXYING_NOT_SUPPORTED:
 			INFO("5.05 Proxying Not Supported");
+		break;
+		case COAP_UNDEFINED_CODE:
+			INFO("Undefined Code");
 		break;
 	}
 
