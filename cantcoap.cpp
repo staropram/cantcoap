@@ -1648,7 +1648,7 @@ void CoapPDU::printHuman() {
 	CoapPDU::CoapOption* options = getOptions();
 	INFO("%d options:",_numOptions);
 	for(int i=0; i<_numOptions; i++) {
-		INFO("OPTION (%d/%d)",i,_numOptions);
+		INFO("OPTION (%d/%d)",i + 1,_numOptions);
 		INFO("   Option number (delta): %hu (%hu)",options[i].optionNumber,options[i].optionDelta);
 		INFOX("   Name: ");
 		switch(options[i].optionNumber) {
