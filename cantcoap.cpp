@@ -75,9 +75,6 @@ CoapPDU::CoapPDU() {
 
 	_constructedFromBuffer = 0;
 
-	_uriBufferSize = 0;
-	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
-
 	setVersion(1);
 }
 
@@ -154,9 +151,6 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
 	}
 
 	_constructedFromBuffer = 1;
-
-	_uriBufferSize = 0;
-	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
 
 	// options
 	_numOptions = 0;
@@ -390,7 +384,6 @@ CoapPDU::~CoapPDU() {
 	if(!_constructedFromBuffer) {
 		free(_pdu);
 	}
-	free(_uriBuffer);
 }
 
 /// Returns a pointer to the internal buffer.
@@ -432,6 +425,7 @@ int CoapPDU::setURI(char *uri) {
  *
  * \return 1 on success, 0 on failure.
  */
+
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/' and alphabetic chars allowed
 	// very simple splitting done
@@ -451,6 +445,10 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	// local vars
 	char *startP=uri,*endP=NULL;
 	int oLen = 0;
+	const int uriBufferSize = 100; //TODO: Choose a good size
+	char uriBuffer[uriBufferSize];
+	char* _uriBuffer = uriBuffer;
+	char* newBuf = NULL;
 	while(1) {
 		// stop at end of string
 		if(*startP==0x00||*(startP+1)==0x00) {
@@ -476,9 +474,8 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		oLen = endP-startP;
 
 		// copy sequence, make space if necessary
-		if((oLen+1)>_uriBufferSize) {
-		    _uriBufferSize = oLen+1;
-			char *newBuf = (char*)realloc(_uriBuffer,_uriBufferSize);
+		if((oLen+1)>uriBufferSize) {
+			newBuf = (char*)realloc(uriBuffer,oLen+1);
 			if(newBuf==NULL) {
 				DBG("Error making space for temporary buffer");
 				return 1;
@@ -499,7 +496,10 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	}
 
 	// clean up
-	memset(_uriBuffer, 0, _uriBufferSize);
+	if (newBuf) {
+	    free(newBuf);
+    }
+	memset(_uriBuffer, 0, uriBufferSize);
 	return 0;
 }
 /// Shorthand for adding a URI QUERY to the option list.
