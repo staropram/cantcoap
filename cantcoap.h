@@ -191,6 +191,9 @@ class CoapPDU {
 		int _numOptions;
 		uint16_t _maxAddedOptionNumber;
 
+		char* _uriBuffer;
+		int _uriBufferSize;
+
 		// functions
 		void shiftPDUUp(int shiftOffset, int shiftAmount);
 		void shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount);

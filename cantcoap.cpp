@@ -75,6 +75,9 @@ CoapPDU::CoapPDU() {
 
 	_constructedFromBuffer = 0;
 
+	_uriBufferSize = 0;
+	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
+
 	setVersion(1);
 }
 
@@ -151,6 +154,9 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
 	}
 
 	_constructedFromBuffer = 1;
+
+	_uriBufferSize = 0;
+	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
 
 	// options
 	_numOptions = 0;
@@ -384,6 +390,7 @@ CoapPDU::~CoapPDU() {
 	if(!_constructedFromBuffer) {
 		free(_pdu);
 	}
+	free(_uriBuffer);
 }
 
 /// Returns a pointer to the internal buffer.
@@ -444,13 +451,6 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	// local vars
 	char *startP=uri,*endP=NULL;
 	int oLen = 0;
-	int bufSpace = 16;
-	char *uriBuf = (char*)malloc(bufSpace*sizeof(char));
-	if(uriBuf==NULL) {
-		DBG("Error allocating temporary memory.");
-		return 1;
-	}
-
 	while(1) {
 		// stop at end of string
 		if(*startP==0x00||*(startP+1)==0x00) {
@@ -476,22 +476,22 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		oLen = endP-startP;
 
 		// copy sequence, make space if necessary
-		if((oLen+1)>bufSpace) {
-			char *newBuf = (char*)realloc(uriBuf,oLen+1);
+		if((oLen+1)>_uriBufferSize) {
+		    _uriBufferSize = oLen+1;
+			char *newBuf = (char*)realloc(_uriBuffer,_uriBufferSize);
 			if(newBuf==NULL) {
 				DBG("Error making space for temporary buffer");
-				free(uriBuf);
 				return 1;
 			}
-			uriBuf = newBuf;
+			_uriBuffer = newBuf;
 		}
 
 		// copy into temporary buffer
-		memcpy(uriBuf,startP,oLen);
-		uriBuf[oLen] = 0x00;
-		DBG("Adding URI_PATH %s",uriBuf);
+		memcpy(_uriBuffer,startP,oLen);
+		_uriBuffer[oLen] = 0x00;
+		DBG("Adding URI_PATH %s",_uriBuffer);
 		// add option
-		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)uriBuf)!=0) {
+		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)_uriBuffer)!=0) {
 			DBG("Error adding option");
 			return 1;
 		}
@@ -499,7 +499,7 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	}
 
 	// clean up
-	free(uriBuf);
+	memset(_uriBuffer, 0, _uriBufferSize);
 	return 0;
 }
 /// Shorthand for adding a URI QUERY to the option list.
