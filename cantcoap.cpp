@@ -447,7 +447,7 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	int oLen = 0;
 	const int uriBufferSize = 100; //TODO: Choose a good size
 	char uriBuffer[uriBufferSize];
-	char* _uriBuffer = uriBuffer;
+	char* uriBufferPtr = uriBuffer;
 	char* newBuf = NULL;
 	while(1) {
 		// stop at end of string
@@ -480,15 +480,15 @@ int CoapPDU::setURI(char *uri, int urilen) {
 				DBG("Error making space for temporary buffer");
 				return 1;
 			}
-			_uriBuffer = newBuf;
+			uriBufferPtr = newBuf;
 		}
 
 		// copy into temporary buffer
-		memcpy(_uriBuffer,startP,oLen);
-		_uriBuffer[oLen] = 0x00;
-		DBG("Adding URI_PATH %s",_uriBuffer);
+		memcpy(uriBufferPtr,startP,oLen);
+		uriBufferPtr[oLen] = 0x00;
+		DBG("Adding URI_PATH %s",uriBufferPtr);
 		// add option
-		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)_uriBuffer)!=0) {
+		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)uriBufferPtr)!=0) {
 			DBG("Error adding option");
 			return 1;
 		}
@@ -499,7 +499,6 @@ int CoapPDU::setURI(char *uri, int urilen) {
 	if (newBuf) {
 	    free(newBuf);
     }
-	memset(_uriBuffer, 0, uriBufferSize);
 	return 0;
 }
 /// Shorthand for adding a URI QUERY to the option list.
