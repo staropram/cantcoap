@@ -7,6 +7,8 @@
 
 #include "CUnit/Basic.h"
 
+#include "dbg.h"
+
 void testHeaderFirstByteConstruction();
 void testMethodCodes();
 void testOptionInsertion();
@@ -236,26 +238,35 @@ const char *uriInD = "/a/b/c/d/e/f/g/h";
 const char *uriInE = "/anothertest";
 const char *uriInF = "test";
 const char *uriOutF = "/test";
+const char *uriInG = "/a/b/c/d?x=1&y=2&z=3";
+const char *uriInH = "/a?x=1";
+const char *uriInI = "a?x=1";
 
-const char *uriInStrings[6] = {
+const char *uriInStrings[9] = {
 	uriInA,
 	uriInB,
 	uriInC,
 	uriInD,
 	uriInE,
 	uriInF,
+	uriInG,
+	uriInH,
+	uriInI,
 };
 
-const char *uriOutStrings[6] = {
+const char *uriOutStrings[9] = {
 	uriInA,
 	uriInA, // deliberate
 	uriInC,
 	uriInD,
 	uriInE,
 	uriOutF,
+	uriInG,
+	uriInH,
+	uriInH,
 };
 
-const int numURISetStrings = 6;
+const int numURISetStrings = 9;
 
 void testURISetting(void) {
 	// locals
@@ -449,29 +460,41 @@ void testPayload() {
 			break;
 		}
 		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		pdu->setCode(CoapPDU::COAP_GET);
 		pdu->setVersion(1);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		pdu->setMessageID(0x1234);
 		pdu->setURI((char*)"test",4);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		CU_ASSERT_FATAL(pdu->setPayload(NULL,4)==1);
 		CU_ASSERT_FATAL(pdu->setPayload((uint8_t*)"test",0)==1);
 		pdu->setPayload((uint8_t*)"\1\2\3",3);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),3);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUA,pdu->getPDULength());
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2\3",pdu->getPayloadLength());
 		DBG("Trying to increase payload size");
 		pdu->setPayload((uint8_t*)"\4\3\2\1",4);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),4);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUB,pdu->getPDULength());
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\4\3\2\1",pdu->getPayloadLength());
 		DBG("Trying to reduce payload size");
 		pdu->setPayload((uint8_t*)"\1\2",2);
+		#ifdef DEBUG
 		pdu->printBin();
+		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),2);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUC,pdu->getPDULength());
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2",pdu->getPayloadLength());
