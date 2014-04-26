@@ -75,9 +75,6 @@ CoapPDU::CoapPDU() {
 
 	_constructedFromBuffer = 0;
 
-	_uriBufferSize = 0;
-	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
-
 	setVersion(1);
 }
 
@@ -154,9 +151,6 @@ CoapPDU::CoapPDU(uint8_t *buffer, int bufferLength, int pduLength) {
 	}
 
 	_constructedFromBuffer = 1;
-
-	_uriBufferSize = 0;
-	_uriBuffer = (char*)calloc(_uriBufferSize, sizeof(char));
 
 	// options
 	_numOptions = 0;
@@ -390,7 +384,6 @@ CoapPDU::~CoapPDU() {
 	if(!_constructedFromBuffer) {
 		free(_pdu);
 	}
-	free(_uriBuffer);
 }
 
 /// Returns a pointer to the internal buffer.
@@ -435,6 +428,7 @@ int CoapPDU::setURI(char *uri) {
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/' and alphabetic chars allowed
 	// very simple splitting done
+	
 
 	// sanitation
 	if(urilen<=0||uri==NULL) {
@@ -448,11 +442,15 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		return 0;
 	}
 
+	// TODO, queries
+	// extract ? to mark where to stop processing path components
+	// and then process the query params
+
 	// local vars
 	char *startP=uri,*endP=NULL;
 	int oLen = 0;
 	while(1) {
-		// stop at end of string
+		// stop at end of string or query
 		if(*startP==0x00||*(startP+1)==0x00) {
 			break;
 		}
@@ -475,33 +473,25 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		// get length of segment
 		oLen = endP-startP;
 
-		// copy sequence, make space if necessary
-		if((oLen+1)>_uriBufferSize) {
-		    _uriBufferSize = oLen+1;
-			char *newBuf = (char*)realloc(_uriBuffer,_uriBufferSize);
-			if(newBuf==NULL) {
-				DBG("Error making space for temporary buffer");
-				return 1;
-			}
-			_uriBuffer = newBuf;
-		}
+		#if DEBUG>=4
+		char *b = (char*)malloc(oLen+1);
+		memcpy(b,startP,oLen);
+		b[oLen] = 0x00;
+		DBG("Adding URI_PATH %s",b);
+		free(b);
+		#endif
 
-		// copy into temporary buffer
-		memcpy(_uriBuffer,startP,oLen);
-		_uriBuffer[oLen] = 0x00;
-		DBG("Adding URI_PATH %s",_uriBuffer);
 		// add option
-		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)_uriBuffer)!=0) {
+		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)startP)!=0) {
 			DBG("Error adding option");
 			return 1;
 		}
 		startP = endP;
 	}
 
-	// clean up
-	memset(_uriBuffer, 0, _uriBufferSize);
 	return 0;
 }
+
 /// Shorthand for adding a URI QUERY to the option list.
 /**
  * Adds a new option to the CoAP PDU that encodes a URI_QUERY.
