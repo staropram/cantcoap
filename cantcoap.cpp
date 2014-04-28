@@ -433,7 +433,6 @@ int CoapPDU::setURI(char *uri) {
  *
  * \return 1 on success, 0 on failure.
  */
-
 int CoapPDU::setURI(char *uri, int urilen) {
 	// only '/', '?', '&' and ascii chars allowed
 
