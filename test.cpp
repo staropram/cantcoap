@@ -504,6 +504,46 @@ void testPayload() {
 		}
 	}
 }
+void testURISizes()
+{
+    char bigURI[] = "/13456789012345678999999999999999999999999999999999/999999999999999999999999"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222/2222222222222222222222222222222333333333333333333333333333333333/"
+        "/22222222222222222222222222222222222222222222222222222222111111111111111111111111111";
+    int bigURISize = strlen(bigURI);
+    const int bigBufferSize = 1000;
+    char bigBuffer[bigBufferSize] = {0};
+    int outLen;
+
+    CoapPDU *pdu = new CoapPDU();
+
+    CU_ASSERT_FATAL(pdu->setURI(bigURI, bigURISize)==0);
+    pdu->getURI(bigBuffer, bigBufferSize, &outLen);
+    CU_ASSERT_NSTRING_EQUAL_FATAL(bigBuffer, bigURI, bigURISize);
+    CU_ASSERT_EQUAL_FATAL(bigURISize, outLen);
+
+    const char* littleURI = "/";
+    int littleURISize = strlen(littleURI);
+    const int littleBufferSize = 10;
+    char littleBuffer[littleBufferSize] = {0};
+    outLen = 0;
+
+    pdu->reset();
+
+    CU_ASSERT_FATAL(pdu->setURI((char*)littleURI, littleURISize)==0);
+    pdu->getURI(littleBuffer, littleBufferSize, &outLen);
+    CU_ASSERT_NSTRING_EQUAL_FATAL(littleBuffer, littleURI, littleURISize);
+    CU_ASSERT_EQUAL_FATAL(littleURISize, outLen);
+
+    delete pdu;
+}
 
 int main(int argc, char **argv) {
 	// use CUnit test framework
@@ -547,6 +587,11 @@ int main(int argc, char **argv) {
    }
 
    if(!CU_add_test(pSuite, "URI setting", testURISetting)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
+   if(!CU_add_test(pSuite, "URI sizes", testURISizes)) {
       CU_cleanup_registry();
       return CU_get_error();
    }
