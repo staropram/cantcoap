@@ -411,15 +411,23 @@ int CoapPDU::setURI(char *uri) {
 
 /// Shorthand function for setting a resource URI.
 /**
- * This will parse the supplied \b uri and construct enough URI_PATH CoAP options to encode it.
+ * This will parse the supplied \b uri and construct enough URI_PATH and URI_QUERY options to encode it.
  * The options are added to the PDU.
  * 
- * At present queries are not handled. TODO Implement queries.
+ * At present only simple URI formatting is handled, only '/','?', and '&' separators, and no port or protocol specificaiton.
  *
- * \note This uses an internal buffer of 16 bytes to manipulate strings. The internal buffer will be
- * expanded dynamically if necessary (path component longer than 16 bytes). The internal buffer will
- * be freed before the function returns.
- * 
+ * The function will split on '/' and create URI_PATH elements until it either reaches the end of the string
+ * in which case it will stop or if it reaches '?' it will start splitting on '&' and create URI_QUERY elements
+ * until it reaches the end of the string.
+ *
+ * Here is an example:
+ *
+ * /a/b/c/d?x=1&y=2&z=3
+ *
+ * Will be broken into four URI_PATH elements "a", "b", "c", "d", and three URI_QUERY elements "x=1", "y=2", "z=3"
+ *
+ * TODO: Add protocol extraction, port extraction, and some malformity checking.
+ *
  * \param uri The uri to parse.
  * \param urilen The length of the uri to parse.
  *
@@ -427,8 +435,7 @@ int CoapPDU::setURI(char *uri) {
  */
 
 int CoapPDU::setURI(char *uri, int urilen) {
-	// only '/' and alphabetic chars allowed
-	// very simple splitting done
+	// only '/', '?', '&' and ascii chars allowed
 
 	// sanitation
 	if(urilen<=0||uri==NULL) {
@@ -442,65 +449,73 @@ int CoapPDU::setURI(char *uri, int urilen) {
 		return 0;
 	}
 
+	// TODO, queries
+	// extract ? to mark where to stop processing path components
+	// and then process the query params
+
 	// local vars
 	char *startP=uri,*endP=NULL;
 	int oLen = 0;
-	const int uriBufferSize = 100; //TODO: Choose a good size
-	char uriBuffer[uriBufferSize];
-	char* uriBufferPtr = uriBuffer;
-	char* newBuf = NULL;
+	char splitChar = '/';
+	int queryStageTriggered = 0;
+	uint16_t optionType = COAP_OPTION_URI_PATH;
 	while(1) {
-		// stop at end of string
+		// stop at end of string or query
 		if(*startP==0x00||*(startP+1)==0x00) {
 			break;
 		}
 
 		// ignore leading slash
-		if(*startP=='/') {
+		if(*startP==splitChar) {
 			DBG("Skipping leading slash");
 			startP++;
 		}
 
 		// find next split point
-		endP = strchr(startP,'/');
+		endP = strchr(startP,splitChar);
 
 		// might not be another slash
 		if(endP==NULL) {
 			DBG("Ending out of slash");
-			endP = uri+urilen;
+			// check if there is a ?
+			endP = strchr(startP,'?');
+			// done if no queries
+			if(endP==NULL) {
+				endP = uri+urilen;
+			} else {
+				queryStageTriggered = 1;
+			}
 		}
 
 		// get length of segment
 		oLen = endP-startP;
 
-		// copy sequence, make space if necessary
-		if((oLen+1)>uriBufferSize) {
-			newBuf = (char*)realloc(uriBuffer,oLen+1);
-			if(newBuf==NULL) {
-				DBG("Error making space for temporary buffer");
-				return 1;
-			}
-			uriBufferPtr = newBuf;
-		}
+		#ifdef DEBUG
+		char *b = (char*)malloc(oLen+1);
+		memcpy(b,startP,oLen);
+		b[oLen] = 0x00;
+		DBG("Adding URI_PATH %s",b);
+		free(b);
+		#endif
 
-		// copy into temporary buffer
-		memcpy(uriBufferPtr,startP,oLen);
-		uriBufferPtr[oLen] = 0x00;
-		DBG("Adding URI_PATH %s",uriBufferPtr);
 		// add option
-		if(addOption(COAP_OPTION_URI_PATH,oLen,(uint8_t*)uriBufferPtr)!=0) {
+		if(addOption(optionType,oLen,(uint8_t*)startP)!=0) {
 			DBG("Error adding option");
 			return 1;
 		}
 		startP = endP;
+
+		if(queryStageTriggered) {
+			splitChar = '&';
+			optionType = COAP_OPTION_URI_QUERY;
+			startP++;
+			queryStageTriggered = false;
+		}
 	}
 
-	// clean up
-	if (newBuf) {
-	    free(newBuf);
-    }
 	return 0;
 }
+
 /// Shorthand for adding a URI QUERY to the option list.
 /**
  * Adds a new option to the CoAP PDU that encodes a URI_QUERY.
@@ -512,10 +527,12 @@ int CoapPDU::addURIQuery(char *query) {
 	return addOption(COAP_OPTION_URI_QUERY,strlen(query),(uint8_t*)query);
 }
 
-/// Concatenates any URI_PATH elements into a single string.
+/// Concatenates any URI_PATH elements and URI_QUERY elements into a single string.
 /**
- * Parses the PDU options and extracts all URI_PATH elements, concatenating them into a single string with slash separators.
- * The produced string will be null terminated.
+ * Parses the PDU options and extracts all URI_PATH and URI_QUERY elements, 
+ * concatenating them into a single string with slash and amphersand separators accordingly.
+ * 
+ * The produced string will be NULL terminated.
  * 
  * \param dst Buffer into which to copy the concatenated path elements.
  * \param dstlen Length of buffer.
@@ -568,10 +585,24 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 		DBG("No space for initial slash needed 1, got %d",bytesLeft);
 		return 1;
 	}
+
+	char separator = '/';
+	int firstQuery = 1;
+
 	for(int i=0; i<_numOptions; i++) {
 		o = &options[i];
 		oLen = o->optionValueLength;
-		if(o->optionNumber==COAP_OPTION_URI_PATH) {
+		if(o->optionNumber==COAP_OPTION_URI_PATH||o->optionNumber==COAP_OPTION_URI_QUERY) {
+			// if the option is a query, change the separator to &
+			if(o->optionNumber==COAP_OPTION_URI_QUERY) {
+				if(firstQuery) {
+					// change previous '/' to a '?'
+					*(dst-1) = '?';
+					firstQuery = 0;
+				}
+				separator = '&';
+			}
+
 			// check space
 			if(oLen>bytesLeft) {
 				DBG("Destination buffer too small, needed %d, got %d",oLen,bytesLeft);
@@ -585,16 +616,16 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 				return 0;
 			}
 
-			// copy URI path component
+			// copy URI path or query component
 			memcpy(dst,o->optionValuePointer,oLen);
 
 			// adjust counters
 			dst += oLen;
 			bytesLeft -= oLen;
 
-			// add slash following (don't know at this point if another option is coming)
+			// add separator following (don't know at this point if another option is coming)
 			if(bytesLeft>=1) {
-				*dst = '/';
+				*dst = separator;
 				dst++;
 				bytesLeft--;
 			} else {
@@ -604,7 +635,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 		}
 	}
 
-	// remove terminating slash
+	// remove terminating separator
 	dst--;
 	bytesLeft++;
 	// add null terminating byte (always space since reserved)
