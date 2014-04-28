@@ -526,7 +526,7 @@ void testURISizes()
 
     CU_ASSERT_FATAL(pdu->setURI(bigURI, bigURISize)==0);
     pdu->getURI(bigBuffer, bigBufferSize, &outLen);
-	CU_ASSERT_NSTRING_EQUAL_FATAL(bigBuffer, bigURI, bigURISize);
+    CU_ASSERT_NSTRING_EQUAL_FATAL(bigBuffer, bigURI, bigURISize);
     CU_ASSERT_EQUAL_FATAL(bigURISize, outLen);
 
     const char* littleURI = "/";
@@ -539,7 +539,7 @@ void testURISizes()
 
     CU_ASSERT_FATAL(pdu->setURI((char*)littleURI, littleURISize)==0);
     pdu->getURI(littleBuffer, littleBufferSize, &outLen);
-	CU_ASSERT_NSTRING_EQUAL_FATAL(littleBuffer, littleURI, littleURISize);
+    CU_ASSERT_NSTRING_EQUAL_FATAL(littleBuffer, littleURI, littleURISize);
     CU_ASSERT_EQUAL_FATAL(littleURISize, outLen);
 
     delete pdu;
