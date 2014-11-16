@@ -172,7 +172,7 @@ if(recvPDU->validate()) {
 }
 ~~~
 
-You must call CoapPDU::validate() and get a positive response before accessing any of the data members. This sets up some internal pionters and so on, so if you fail to do it, undefined behaviour will result.
+You must call CoapPDU::validate() and get a positive response before accessing any of the data members. This sets up some internal pointers and so on, so if you fail to do it, undefined behaviour will result.
 
 Note that the constructor is just a shorthand for the external-buffer-constructor explained above, and you can use the long form if you want. For example. you might want to use the long form if you have a buffer bigger than the PDU and you expect to reuse it.
 
