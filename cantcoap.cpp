@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include "cantcoap.h"
 #include "arpa/inet.h"
+#include "sysdep.h"
 
 /// Memory-managed constructor. Buffer for PDU is dynamically sized and allocated by the object.
 /**
@@ -886,23 +887,17 @@ CoapPDU::Code CoapPDU::httpStatusToCode(int httpStatus) {
  */
 int CoapPDU::setMessageID(uint16_t messageID) {
 	// message ID is stored in network byte order
-	uint16_t networkOrder = htons(messageID);
-	// bytes 2 and 3 hold the ID
-	_pdu[2] &= 0x00;
-	_pdu[2] |= (networkOrder >> 8);    // MSB
-	_pdu[3] &= 0x00;
-	_pdu[3] |= (networkOrder & 0x00FF); // LSB
+	uint8_t *to = &_pdu[2];
+	endian_store16(to, messageID);
 	return 0;
 }
 
 /// Returns the 16 bit message ID of the PDU.
 uint16_t CoapPDU::getMessageID() {
 	// mesasge ID is stored in network byteorder
-	uint16_t networkOrder = 0x0000;
-	networkOrder |= _pdu[2];
-	networkOrder <<= 8;
-	networkOrder |= _pdu[3];
-	return ntohs(networkOrder);
+	uint8_t *from = &_pdu[2];
+	uint16_t messageID = endian_load16(uint16_t, from);
+	return messageID;
 }
 
 /// Returns the length of the PDU.
@@ -1276,11 +1271,8 @@ int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
 		return 0;
 	}
 
-	uint16_t networkOrder = htons(format);
-	c[0] &= 0x00;
-	c[0] |= (networkOrder >> 8);     // MSB
-	c[1] &= 0x00;
-	c[1] |= (networkOrder & 0x00FF); // LSB
+	uint8_t *to = c;
+	endian_store16(to, format);
 	if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,2,c)!=0) {
 		DBG("Error setting content format");
 		return 1;
@@ -1353,13 +1345,9 @@ uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
 	if(length==13) {
 		return (option[offset]+13);
 	} else {
-		// need to convert to host order
-		uint16_t networkOrder = 0x0000;
-		networkOrder |= option[offset++];
-		networkOrder <<= 8;
-		networkOrder |= option[offset];
-		uint16_t hostOrder = ntohs(networkOrder);
-		return hostOrder+269;
+		uint8_t *from = &option[offset];
+		uint16_t value = endian_load16(uint16_t, from);
+		return value+269;
 	}
 
 }
@@ -1377,14 +1365,9 @@ uint16_t CoapPDU::getOptionDelta(uint8_t *option) {
 		// single byte option delta
 		return (option[1]+13);
 	} else if(delta==14) {
-		// double byte option delta
-		// need to convert to host order
-		uint16_t networkOrder = 0x0000;
-		networkOrder |= option[1];
-		networkOrder <<= 8;
-		networkOrder |= option[2];
-		uint16_t hostOrder = ntohs(networkOrder);
-		return hostOrder+269;
+		uint8_t *from = &option[1];
+		uint16_t value = endian_load16(uint16_t, from);
+		return value+269;
 	} else {
 		// should only ever occur in payload marker
 		return delta;
@@ -1471,11 +1454,10 @@ void CoapPDU::setOptionDelta(int optionPosition, uint16_t optionDelta) {
 	} else {
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
-		optionDelta = htons(optionDelta-269);
-		_pdu[++optionPosition] &= 0x00;
-		_pdu[optionPosition] |= (optionDelta >> 8);     // MSB
-		_pdu[++optionPosition] &= 0x00;
-		_pdu[optionPosition] |= (optionDelta & 0x00FF); // LSB
+		optionDelta -= 269;
+		uint8_t *to = &_pdu[optionPosition];
+		optionPosition += 2;
+		endian_store16(to, optionDelta);
 	}
 }
 
@@ -1510,11 +1492,10 @@ int CoapPDU::insertOption(
 	} else {
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
-		optionDelta = htons(optionDelta-269);
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionDelta >> 8);     // MSB
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (optionDelta & 0x00FF); // LSB
+		optionDelta -= 269;
+		uint8_t *to = &_pdu[insertionPosition];
+		insertionPosition += 2;
+		endian_store16(to, optionDelta);
 	}
 
 	// set the option value length bytes
@@ -1528,11 +1509,10 @@ int CoapPDU::insertOption(
 		_pdu[headerStart] |= 0x0E; // 14 in second nibble
 		// this is in network byte order
 		DBG("optionValueLength: %u",optionValueLength);
-		uint16_t networkOrder = htons(optionValueLength-269);
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (networkOrder >> 8);     // MSB
-		_pdu[++insertionPosition] &= 0x00;
-		_pdu[insertionPosition] |= (networkOrder & 0x00FF); // LSB
+		uint8_t *to = &_pdu[insertionPosition];
+		optionValueLength -= 269;
+		endian_store16(to, optionValueLength);
+		insertionPosition += 2;
 	}
 
 	// and finally copy the option value itself
