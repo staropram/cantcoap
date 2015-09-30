@@ -227,8 +227,14 @@ int CoapPDU::validate() {
    // |1 1 1 1 1 1 1 1|    Payload (if any) ...
    // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-	DBG("Version: %d",getVersion());
-	DBG("Type: %d",getType());
+	// version must be 1
+	int version = getVersion();
+	if (version != 1) {
+		DBG("Invalid version: %d", version);
+		return 0;
+	}
+	DBG("Version: %d", version);
+	DBG("Type: %d", getType());
 
 	// token length must be between 0 and 8
 	int tokenLength = getTokenLength();
