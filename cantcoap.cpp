@@ -937,6 +937,10 @@ CoapPDU::CoapOption* CoapPDU::getOptions() {
 
 	// malloc space for options
 	CoapOption *options = (CoapOption*)malloc(_numOptions*sizeof(CoapOption));
+	if(options==NULL) {
+		DBG("Failed to allocate memory for options.");
+		return NULL;
+	}
 
 	// first option occurs after token
 	int optionPos = COAP_HDR_SIZE + getTokenLength();
@@ -1666,6 +1670,10 @@ void CoapPDU::printHuman() {
 
 	// print options
 	CoapPDU::CoapOption* options = getOptions();
+	if(options==NULL) {
+		return;
+	}
+
 	INFO("%d options:",_numOptions);
 	for(int i=0; i<_numOptions; i++) {
 		INFO("OPTION (%d/%d)",i + 1,_numOptions);
