@@ -589,6 +589,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 		bytesLeft--;
 	} else {
 		DBG("No space for initial slash needed 1, got %d",bytesLeft);
+		free(options);
 		return 1;
 	}
 
@@ -612,6 +613,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 			// check space
 			if(oLen>bytesLeft) {
 				DBG("Destination buffer too small, needed %d, got %d",oLen,bytesLeft);
+				free(options);
 				return 1;
 			}
 
@@ -619,6 +621,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 			if(oLen==1&&o->optionValuePointer[0]=='/') {
 				*dst = 0x00;
 				*outLen = 1;
+				free(options);
 				return 0;
 			}
 
@@ -636,6 +639,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 				bytesLeft--;
 			} else {
 				DBG("Ran out of space after processing option");
+				free(options);
 				return 1;
 			}
 		}
@@ -647,6 +651,7 @@ int CoapPDU::getURI(char *dst, int dstlen, int *outLen) {
 	// add null terminating byte (always space since reserved)
 	*dst = 0x00;
 	*outLen = (dstlen-1)-bytesLeft;
+	free(options);
 	return 0;
 }
 
@@ -1757,6 +1762,7 @@ void CoapPDU::printHuman() {
 		}
 		INFO("\"");
 	}
+	free(options);
 	INFO("__________________");
 }
 
