@@ -1,6 +1,6 @@
+#define _POSIX_C_SOURCE 201112L // needed for struct addrinfo on Linux
 #include <sys/types.h>
 #include <sys/socket.h>
-#define __USE_POSIX 1
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
