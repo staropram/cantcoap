@@ -36,7 +36,7 @@ class CoapPDU {
 			COAP_ACKNOWLEDGEMENT=0x20,
 			COAP_RESET=0x30
 		};
-		
+
 		// CoAP response codes.
 		enum Code {
 			COAP_EMPTY=0x00,
@@ -203,7 +203,7 @@ class CoapPDU {
 		uint16_t getOptionDelta(uint8_t *option);
 		void setOptionDelta(int optionPosition, uint16_t optionDelta);
 		uint16_t getOptionValueLength(uint8_t *option);
-		
+
 };
 
 /*
@@ -217,7 +217,7 @@ class CoapPDU {
 
 // Response codes 2.00 - 5.31
 // 2.00 - 2.05
-#define COAP_CODE_CREATED 0x41 
+#define COAP_CODE_CREATED 0x41
 #define COAP_CODE_DELETED 0x42
 #define COAP_CODE_VALID   0x43
 #define COAP_CODE_CHANGED 0x44
