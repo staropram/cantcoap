@@ -28,7 +28,7 @@ static CoapPDU::Type coapTypeVector[COAP_NUM_MESSAGE_TYPES] = {
 
 //< Possible CoAP message codes
 #define COAP_NUM_MESSAGE_CODES 26
-static CoapPDU::Code coapCodeVector[COAP_NUM_MESSAGE_CODES] = { 
+static CoapPDU::Code coapCodeVector[COAP_NUM_MESSAGE_CODES] = {
 	CoapPDU::COAP_EMPTY,
 	CoapPDU::COAP_GET,
 	CoapPDU::COAP_POST,
@@ -94,7 +94,7 @@ const uint8_t optionInsertionTestI[] = {
 void testOptionInsertion(void) {
 	CoapPDU *pdu = NULL;
 	uint8_t *buffer[64];
-	
+
 	for(int constructorType=0; constructorType<4; constructorType++) {
 		DBG("New iteration: constructorType: %d",constructorType);
 		switch(constructorType) {
@@ -141,7 +141,7 @@ void testOptionInsertion(void) {
 void testHeaderFirstByteConstruction(void) {
 	CoapPDU *pdu = NULL;
 	uint8_t *buffer[64];
-	
+
 	for(int constructorType=0; constructorType<4; constructorType++) {
 		DBG("New iteration: constructorType: %d",constructorType);
 		switch(constructorType) {
@@ -276,7 +276,7 @@ void testURISetting(void) {
 	char *inBuf = NULL, *expectedBuf = NULL;
 
 	uint8_t *buffer[64];
-	
+
 
 	// iterate over URIs
 	for(int i=0; i<numURISetStrings; i++) {
@@ -303,7 +303,7 @@ void testURISetting(void) {
 					pdu->reset();
 				break;
 			}
-			
+
 			pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 			pdu->setCode(CoapPDU::COAP_CHANGED);
 			pdu->setVersion(1);
@@ -432,13 +432,13 @@ void testMessageID() {
 // payloads
 const uint8_t payloadTestPDUA[] = {
    0x40, 0x01, 0x12, 0x34, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x01, 0x02, 0x03,
-}; 
+};
 const uint8_t payloadTestPDUB[] = {
    0x40, 0x01, 0x12, 0x34, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x04, 0x03, 0x02, 0x01
-}; 
+};
 const uint8_t payloadTestPDUC[] = {
    0x40, 0x01, 0x12, 0x34, 0xb4, 0x74, 0x65, 0x73, 0x74, 0xff, 0x01, 0x02,
-}; 
+};
 
 void testPayload() {
 	// test for both buffer and dynamic
@@ -553,7 +553,7 @@ int main(int argc, char **argv) {
    if (CUE_SUCCESS != CU_initialize_registry())
       return CU_get_error();
 
-	// add a suite to the registry 
+	// add a suite to the registry
    pSuite = CU_add_suite("Header", NULL, NULL);
    if(!pSuite) {
       CU_cleanup_registry();
