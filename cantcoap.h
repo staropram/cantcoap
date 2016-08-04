@@ -1,7 +1,4 @@
 #pragma once
-#pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
-#pragma clang diagnostic ignored "-Wconstant-logical-operand"
-#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
 
 /// Copyright (c) 2013, Ashley Mills.
 #include <unistd.h>

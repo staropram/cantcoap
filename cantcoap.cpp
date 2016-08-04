@@ -1277,7 +1277,7 @@ int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
 	uint8_t c[2];
 
 	// just use 1 byte if can do it
-	if(format<256) {
+	if((uint16_t)format <= 0xffu) {
 		c[0] = format;
 		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,1,c)!=0) {
 			DBG("Error setting content format");
@@ -1879,14 +1879,14 @@ void CoapPDU::printBin() {
 /// Prints a single byte in binary.
 void CoapPDU::printBinary(uint8_t b) {
 	printf("%d%d%d%d%d%d%d%d",
-		(b&0x80)&&0x01,
-		(b&0x40)&&0x01,
-		(b&0x20)&&0x01,
-		(b&0x10)&&0x01,
-		(b&0x08)&&0x01,
-		(b&0x04)&&0x01,
-		(b&0x02)&&0x01,
-		(b&0x01)&&0x01);
+		((b & 0x80) != 0 ? 1 : 0),
+		((b & 0x40) != 0 ? 1 : 0),
+		((b & 0x20) != 0 ? 1 : 0),
+		((b & 0x10) != 0 ? 1 : 0),
+		((b & 0x08) != 0 ? 1 : 0),
+		((b & 0x04) != 0 ? 1 : 0),
+		((b & 0x02) != 0 ? 1 : 0),
+		((b & 0x01) != 0 ? 1 : 0));
 }
 
 /// Dumps the PDU as a byte sequence to stdout.
