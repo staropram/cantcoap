@@ -546,6 +546,8 @@ void testURISizes()
 }
 
 int main(int argc, char **argv) {
+	(void)argc;
+	(void)argv;
 	// use CUnit test framework
 	CU_pSuite pSuite = NULL;
 
