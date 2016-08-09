@@ -1,36 +1,31 @@
 LIB_INSTALL=$(HOME)/lib
 INCLUDE_INSTALL=$(HOME)/include
 
-LIBS=-L/usr/local/lib -L/usr/lib/ -L. -lcunit
-INCLUDE=-I/usr/local/include -I/usr/include
+TEST_LIBS=-L$(CURDIR) -lcunit
 
-#CXX=g++
-CXX=clang++
-CXXFLAGS=-Wall -DDEBUG -std=c++11
-
-#CC=gcc
-CC=clang
-CFLAGS=-Wall -std=c99 -DDEBUG
+CPPFLAGS=-DDEBUG
+CFLAGS=-Wall -std=c99
+CXXFLAGS=-Wall -std=c++11
 
 default: nethelper.o staticlib test
 
-test: libcantcoap.a test.cpp
-	$(CXX) $(CXXFLAGS) test.cpp -o test -lcantcoap $(LIBS) $(INCLUDE)
+test: test.cpp libcantcoap.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@ -lcantcoap $(TEST_LIBS)
 
-cantcoap.o: cantcoap.cpp
-	$(CXX) $(CXXFLAGS) $^ -c -o $@ $(LIBS) $(INCLUDE)
+cantcoap.o: cantcoap.cpp cantcoap.h
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -c -o $@
 
-nethelper.o: nethelper.c
-	$(CC) $(CFLAGS) -c $^ -c -o $@ $(INCLUDE) $(LIBS)
+nethelper.o: nethelper.c nethelper.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -c -o $@
 
 staticlib: libcantcoap.a
 
 libcantcoap.a: cantcoap.o
-	ar -rc libcantcoap.a $^
+	$(AR) $(ARFLAGS) libcantcoap.a $^
 
 clean:
-	rm *.o; rm test; rm libcantcoap.a
+	$(RM) *.o test libcantcoap.a
 
 install:
-	cp libcantcoap.a $(LIB_INSTALL)/
-	cp cantcoap.h $(INCLUDE_INSTALL)/
+	install libcantcoap.a $(LIB_INSTALL)/
+	install cantcoap.h $(INCLUDE_INSTALL)/
