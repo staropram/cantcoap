@@ -252,7 +252,7 @@ int CoapPDU::validate() {
 	// check that code is valid
 	CoapPDU::Code code = getCode();
 	if(code<COAP_EMPTY ||
-		(code>COAP_DELETE&&code<COAP_CREATED) ||
+		(code>COAP_LASTMETHOD&&code<COAP_CREATED) ||
 		(code>COAP_CONTENT&&code<COAP_BAD_REQUEST) ||
 		(code>COAP_NOT_ACCEPTABLE&&code<COAP_PRECONDITION_FAILED) ||
 		(code==0x8E) ||
@@ -1646,9 +1646,8 @@ void CoapPDU::printHuman() {
 		case COAP_PROXYING_NOT_SUPPORTED:
 			INFO("5.05 Proxying Not Supported");
 		break;
-		case COAP_UNDEFINED_CODE:
-			INFO("Undefined Code");
-		break;
+		default:
+			INFO("Undefined Code %u",(unsigned)(getCode()));
 	}
 
 	// print message ID
@@ -1671,10 +1670,11 @@ void CoapPDU::printHuman() {
 	// print options
 	CoapPDU::CoapOption* options = getOptions();
 	if(options==NULL) {
-		return;
+		INFO("NO options");
+	} else {
+		INFO("%d options:",_numOptions);
 	}
-
-	INFO("%d options:",_numOptions);
+	
 	for(int i=0; i<_numOptions; i++) {
 		INFO("OPTION (%d/%d)",i + 1,_numOptions);
 		INFO("   Option number (delta): %hu (%hu)",options[i].optionNumber,options[i].optionDelta);
@@ -1738,7 +1738,7 @@ void CoapPDU::printHuman() {
 				INFO("SIZE2");
 			break;
 			default:
-				INFO("Unknown option");
+				INFO("Unknown option %u",(unsigned)options[i].optionNumber);
 			break;
 		}
 		INFO("   Value length: %u",options[i].optionValueLength);
