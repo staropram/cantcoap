@@ -1353,7 +1353,6 @@ uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
 	// extra bytes skip header
 	int offset = 1;
 	// skip extra option delta bytes
-	printf("delta is %u\n",delta);
 	if(delta==13) {
 		offset++;
 	} else if(delta==14) {
@@ -1361,7 +1360,6 @@ uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
 	}
 
 	// process length
-	printf("length is %u\n",length);
 	if(length==13) {
 		return (option[offset]+13);
 	} else {

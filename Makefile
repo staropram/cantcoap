@@ -8,10 +8,7 @@ CPPFLAGS=-DDEBUG -I/opt/local/include
 CFLAGS=-Wall -std=c99
 CXXFLAGS=-Wall -std=c++11
 
-default: nethelper.o staticlib test basic
-
-basic: basic.cpp libcantcoap.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@ -lcantcoap $(TEST_LIBS)
+default: nethelper.o staticlib test
 
 test: test.cpp libcantcoap.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@ -lcantcoap $(TEST_LIBS)
