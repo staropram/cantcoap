@@ -1042,9 +1042,11 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	int nextOptionDelta = getOptionDelta(&_pdu[insertionPosition]);
 	int nextOptionNumber = prevOptionNumber + nextOptionDelta;
 	int nextOptionDeltaBytes = computeExtraBytes(nextOptionDelta);
+	DBG("nextOptionDeltaBytes: %d",nextOptionDeltaBytes);
 	// recompute option delta, relative to inserted option
 	int newNextOptionDelta = nextOptionNumber-insertedOptionNumber;
 	int newNextOptionDeltaBytes = computeExtraBytes(newNextOptionDelta);
+	DBG("newNextOptionDeltaBytes: %d",newNextOptionDeltaBytes);
 	// determine adjustment
 	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
 
@@ -1111,6 +1113,7 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	DBG_PDU();
 
 	// done, mark it with B!
+	_numOptions++;
 	return 0;
 }
 
@@ -1350,6 +1353,7 @@ uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
 	// extra bytes skip header
 	int offset = 1;
 	// skip extra option delta bytes
+	printf("delta is %u\n",delta);
 	if(delta==13) {
 		offset++;
 	} else if(delta==14) {
@@ -1357,6 +1361,7 @@ uint16_t CoapPDU::getOptionValueLength(uint8_t *option) {
 	}
 
 	// process length
+	printf("length is %u\n",length);
 	if(length==13) {
 		return (option[offset]+13);
 	} else {
@@ -1470,8 +1475,7 @@ void CoapPDU::setOptionDelta(int optionPosition, uint16_t optionDelta) {
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
 		optionDelta -= 269;
-		uint8_t *to = &_pdu[optionPosition];
-		optionPosition += 2;
+		uint8_t *to = &_pdu[++optionPosition];
 		endian_store16(to, optionDelta);
 	}
 }
@@ -1509,8 +1513,8 @@ int CoapPDU::insertOption(
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
 		optionDelta -= 269;
 		uint8_t *to = &_pdu[++insertionPosition];
-		insertionPosition += 1;
 		endian_store16(to, optionDelta);
+		insertionPosition += 1;
 	}
 
 	// set the option value length bytes
