@@ -252,7 +252,7 @@ int CoapPDU::validate() {
 	// check that code is valid
 	CoapPDU::Code code = getCode();
 	if(code<COAP_EMPTY ||
-		(code>COAP_DELETE&&code<COAP_CREATED) ||
+		(code>COAP_LASTMETHOD&&code<COAP_CREATED) ||
 		(code>COAP_CONTENT&&code<COAP_BAD_REQUEST) ||
 		(code>COAP_NOT_ACCEPTABLE&&code<COAP_PRECONDITION_FAILED) ||
 		(code==0x8E) ||
@@ -1508,8 +1508,8 @@ int CoapPDU::insertOption(
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
 		optionDelta -= 269;
-		uint8_t *to = &_pdu[insertionPosition];
-		insertionPosition += 2;
+		uint8_t *to = &_pdu[++insertionPosition];
+		insertionPosition += 1;
 		endian_store16(to, optionDelta);
 	}
 
@@ -1524,10 +1524,10 @@ int CoapPDU::insertOption(
 		_pdu[headerStart] |= 0x0E; // 14 in second nibble
 		// this is in network byte order
 		DBG("optionValueLength: %u",optionValueLength);
-		uint8_t *to = &_pdu[insertionPosition];
+		uint8_t *to = &_pdu[++insertionPosition];
 		optionValueLength -= 269;
 		endian_store16(to, optionValueLength);
-		insertionPosition += 2;
+		insertionPosition += 1;
 	}
 
 	// and finally copy the option value itself
@@ -1646,9 +1646,8 @@ void CoapPDU::printHuman() {
 		case COAP_PROXYING_NOT_SUPPORTED:
 			INFO("5.05 Proxying Not Supported");
 		break;
-		case COAP_UNDEFINED_CODE:
-			INFO("Undefined Code");
-		break;
+		default:
+			INFO("Undefined Code %u",(unsigned)(getCode()));
 	}
 
 	// print message ID
@@ -1671,10 +1670,11 @@ void CoapPDU::printHuman() {
 	// print options
 	CoapPDU::CoapOption* options = getOptions();
 	if(options==NULL) {
-		return;
+		INFO("NO options");
+	} else {
+		INFO("%d options:",_numOptions);
 	}
-
-	INFO("%d options:",_numOptions);
+	
 	for(int i=0; i<_numOptions; i++) {
 		INFO("OPTION (%d/%d)",i + 1,_numOptions);
 		INFO("   Option number (delta): %hu (%hu)",options[i].optionNumber,options[i].optionDelta);
@@ -1738,7 +1738,7 @@ void CoapPDU::printHuman() {
 				INFO("SIZE2");
 			break;
 			default:
-				INFO("Unknown option");
+				INFO("Unknown option %u",(unsigned)options[i].optionNumber);
 			break;
 		}
 		INFO("   Value length: %u",options[i].optionValueLength);
@@ -1860,16 +1860,24 @@ void CoapPDU::printOptionHuman(uint8_t *option) {
 
 /// Dumps the PDU header in hex.
 void CoapPDU::printHex() {
-	printf("Hexdump dump of PDU\r\n");
-	printf("%.2x %.2x %.2x %.2x",_pdu[0],_pdu[1],_pdu[2],_pdu[3]);
+	printf("Hexd dump of PDU len:%d\r\n",_pduLength);
+	for(int i=0; i<_pduLength; i++) {
+		if(i%4==0) {
+			printf("\r\n");
+			printf("%.2d: ",i);
+		}
+		printf("%.2x ",_pdu[i]);
+	}
+	printf("\r\n");
 }
 
 /// Dumps the entire PDU in binary.
 void CoapPDU::printBin() {
+	printf("Bin dump of PDU len:%d\r\n",_pduLength);
 	for(int i=0; i<_pduLength; i++) {
 		if(i%4==0) {
 			printf("\r\n");
-			printf("%.2d ",i);
+			printf("%.2d: ",i);
 		}
 		CoapPDU::printBinary(_pdu[i]); printf(" ");
 	}
