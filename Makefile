@@ -1,9 +1,10 @@
 LIB_INSTALL=$(HOME)/lib
 INCLUDE_INSTALL=$(HOME)/include
 
+CURDIR=/opt/local/lib -L.
 TEST_LIBS=-L$(CURDIR) -lcunit
 
-CPPFLAGS=-DDEBUG
+CPPFLAGS=-DDEBUG -I/opt/local/include
 CFLAGS=-Wall -std=c99
 CXXFLAGS=-Wall -std=c++11
 

@@ -1042,9 +1042,11 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	int nextOptionDelta = getOptionDelta(&_pdu[insertionPosition]);
 	int nextOptionNumber = prevOptionNumber + nextOptionDelta;
 	int nextOptionDeltaBytes = computeExtraBytes(nextOptionDelta);
+	DBG("nextOptionDeltaBytes: %d",nextOptionDeltaBytes);
 	// recompute option delta, relative to inserted option
 	int newNextOptionDelta = nextOptionNumber-insertedOptionNumber;
 	int newNextOptionDeltaBytes = computeExtraBytes(newNextOptionDelta);
+	DBG("newNextOptionDeltaBytes: %d",newNextOptionDeltaBytes);
 	// determine adjustment
 	int optionDeltaAdjustment = newNextOptionDeltaBytes-nextOptionDeltaBytes;
 
@@ -1111,6 +1113,7 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
 	DBG_PDU();
 
 	// done, mark it with B!
+	_numOptions++;
 	return 0;
 }
 
@@ -1470,8 +1473,7 @@ void CoapPDU::setOptionDelta(int optionPosition, uint16_t optionDelta) {
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
 		optionDelta -= 269;
-		uint8_t *to = &_pdu[optionPosition];
-		optionPosition += 2;
+		uint8_t *to = &_pdu[++optionPosition];
 		endian_store16(to, optionDelta);
 	}
 }
@@ -1508,9 +1510,9 @@ int CoapPDU::insertOption(
 		// 2 extra bytes, network byte order uint16_t
 		_pdu[headerStart] |= 0xE0; // 14 in first nibble
 		optionDelta -= 269;
-		uint8_t *to = &_pdu[insertionPosition];
-		insertionPosition += 2;
+		uint8_t *to = &_pdu[++insertionPosition];
 		endian_store16(to, optionDelta);
+		insertionPosition += 1;
 	}
 
 	// set the option value length bytes
@@ -1524,10 +1526,10 @@ int CoapPDU::insertOption(
 		_pdu[headerStart] |= 0x0E; // 14 in second nibble
 		// this is in network byte order
 		DBG("optionValueLength: %u",optionValueLength);
-		uint8_t *to = &_pdu[insertionPosition];
+		uint8_t *to = &_pdu[++insertionPosition];
 		optionValueLength -= 269;
 		endian_store16(to, optionValueLength);
-		insertionPosition += 2;
+		insertionPosition += 1;
 	}
 
 	// and finally copy the option value itself
@@ -1860,16 +1862,24 @@ void CoapPDU::printOptionHuman(uint8_t *option) {
 
 /// Dumps the PDU header in hex.
 void CoapPDU::printHex() {
-	printf("Hexdump dump of PDU\r\n");
-	printf("%.2x %.2x %.2x %.2x",_pdu[0],_pdu[1],_pdu[2],_pdu[3]);
+	printf("Hexd dump of PDU len:%d\r\n",_pduLength);
+	for(int i=0; i<_pduLength; i++) {
+		if(i%4==0) {
+			printf("\r\n");
+			printf("%.2d: ",i);
+		}
+		printf("%.2x ",_pdu[i]);
+	}
+	printf("\r\n");
 }
 
 /// Dumps the entire PDU in binary.
 void CoapPDU::printBin() {
+	printf("Bin dump of PDU len:%d\r\n",_pduLength);
 	for(int i=0; i<_pduLength; i++) {
 		if(i%4==0) {
 			printf("\r\n");
-			printf("%.2d ",i);
+			printf("%.2d: ",i);
 		}
 		CoapPDU::printBinary(_pdu[i]); printf(" ");
 	}
