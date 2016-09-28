@@ -4,7 +4,10 @@ INCLUDE_INSTALL=$(HOME)/include
 CURDIR=/opt/local/lib -L.
 TEST_LIBS=-L$(CURDIR) -lcunit
 
-CPPFLAGS=-DDEBUG -I/opt/local/include
+CPPFLAGS=-I/opt/local/include
+#Uncomment this to enabel debug output and symbols
+CPPFLAGS+=-DDEBUG -O0 -g 
+
 CFLAGS=-Wall -std=c99
 CXXFLAGS=-Wall -std=c++11
 

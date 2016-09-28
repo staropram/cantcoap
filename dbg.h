@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>
 
-#define DEBUG 1
+//DEBUG define is  handled in  Makefile
 //#undef DEBUG
 
 #define DBG_NEWLINE "\n"
