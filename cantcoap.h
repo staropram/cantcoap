@@ -183,12 +183,12 @@ class CoapPDU {
 		* 32, i.e.  the three upper bits determine the response class while
 		* the remaining five fine-grained information specific to that class.
 		*/
-		constexpr unsigned httpStatusToCoapUnsignedCode(unsigned httpStatus) {
+		static constexpr unsigned httpStatusToCoapUnsignedCode(unsigned httpStatus) {
 			return (httpStatus / 100 << 5) | httpStatus % 100;
 		}
 
 		/* Determines the class of response code C */
-		constexpr unsigned coapResponseClass(CoapPDU::Code code) {
+		static constexpr unsigned coapResponseClass(CoapPDU::Code code) {
 			return (code >> 5) & 0xFF;
 		}
 
@@ -208,7 +208,7 @@ class CoapPDU {
 		int addURIQuery(char *query);
 
 		// content format helper
-		int setContentFormat(CoapPDU::ContentFormat format);
+		int setContentFormat(uint16_t format);
 
 		// block options
 		CoapBlockOpt parseOptionBlock(CoapOption* optPtr);
@@ -279,12 +279,13 @@ class CoapPDU {
 #define COAP_CODE_DELETE 0x04
 
 // Response codes 2.00 - 5.31
-// 2.00 - 2.05
-#define COAP_CODE_CREATED 0x41
-#define COAP_CODE_DELETED 0x42
-#define COAP_CODE_VALID   0x43
-#define COAP_CODE_CHANGED 0x44
-#define COAP_CODE_CONTENT 0x45
+// 2.00 - 2.05 and 2.31
+#define COAP_CODE_CREATED 	0x41
+#define COAP_CODE_DELETED 	0x42
+#define COAP_CODE_VALID   	0x43
+#define COAP_CODE_CHANGED 	0x44
+#define COAP_CODE_CONTENT 	0x45
+#define COAP_CODE_CONTINUE  0x5F
 
 // 4.00 - 4.15
 #define COAP_CODE_BAD_REQUEST                0x80
@@ -294,6 +295,7 @@ class CoapPDU {
 #define COAP_CODE_NOT_FOUND                  0x84
 #define COAP_CODE_METHOD_NOT_ALLOWED         0x85
 #define COAP_CODE_NOT_ACCEPTABLE             0x86
+#define COAP_CODE_REQUEST_ENTITY_INCOMPLETE  0x88
 #define COAP_CODE_PRECONDITION_FAILED        0x8C
 #define COAP_CODE_REQUEST_ENTITY_TOO_LARGE   0x8D
 #define COAP_CODE_UNSUPPORTED_CONTENT_FORMAT 0x8F

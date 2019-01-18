@@ -1259,7 +1259,7 @@ uint8_t* CoapPDU::getPayloadCopy() {
  *
  * \return 0 on success, 1 on failure.
  */
-int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
+int CoapPDU::setContentFormat(uint16_t format) {
 	if(format==0) {
 		// minimal representation means null option value
 		if(addOption(CoapPDU::COAP_OPTION_CONTENT_FORMAT,0,NULL)!=0) {
