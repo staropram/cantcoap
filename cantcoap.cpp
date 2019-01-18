@@ -1296,6 +1296,53 @@ int CoapPDU::setContentFormat(CoapPDU::ContentFormat format) {
 	return 0;
 }
 
+bool CoapPDU::setOptionBlock(const CoapBlockOpt& blockOpt, Option optionType) {
+    uint32_t value = ((static_cast<uint32_t>(blockOpt.num) << 4) | blockOpt.m << 3) | blockOpt.szx;
+    size_t len     = 3;     // use 3 bytes for 4095 > blockOpt.num  < 1048576
+    if (blockOpt.num < 16u) { // 2 ^ 4
+        len = 1; // use 1 byte
+    } else if (blockOpt.num < 4096u) { // 2 ^ 12
+        len = 2; // use 2 bytes
+    }
+    // shift to corect size.
+    value = value << 8 * (sizeof(value) - len);
+    uint8_t buf[4];
+    endian_store32(buf, value);
+    return addOption(optionType, len, buf) == 0;
+}
+
+ CoapPDU::CoapBlockOpt CoapPDU::parseOptionBlock(CoapOption* optPtr) {
+    CoapBlockOpt blockOpt{0, 0, false};
+    auto len = optPtr->optionValueLength;
+    if (len > 0) {
+        auto lastBytePtr              = optPtr->optionValuePointer + (len - 1);
+        blockOpt.m                    = (*lastBytePtr & 0x08) != 0u;
+        blockOpt.szx                  = *lastBytePtr & 0x07;
+        uint16_t numPart4ByteLen2ToB3 = 0u;
+        if (len == 2) {
+            numPart4ByteLen2ToB3 = static_cast<uint16_t>(*optPtr->optionValuePointer);
+        } else if (len == 3) {
+            numPart4ByteLen2ToB3 = endian_load16(uint16_t, optPtr->optionValuePointer);
+        }
+        blockOpt.num = (numPart4ByteLen2ToB3 << 4) | ((*lastBytePtr & 0xF0) >> 4);
+    }
+    return blockOpt;
+}
+
+CoapPDU::CoapBlockOpt CoapPDU::getOptionBlock(Option optionType)
+{
+    CoapBlockOpt blockOpt{0, 0, false};
+    auto optBegin = getOptions();
+    auto noOpts   = getNumOptions();
+    for (int i = 0; i < noOpts; ++i) {
+        auto optPtr = optBegin + i;
+        if (optPtr->optionNumber == optionType) {
+            blockOpt = parseOptionBlock(optPtr);
+        }
+    }
+    return blockOpt;
+}
+
 // PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE
 // PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE PRIVATE
 

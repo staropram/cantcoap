@@ -21,6 +21,11 @@
 // |1 1 1 1 1 1 1 1|    Payload (if any) ...
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+#ifndef COAP_MAX_BLOCK_SZX
+//The largest value for the SZX component in a Block option.
+#define COAP_MAX_BLOCK_SZX 6
+#endif /* COAP_MAX_BLOCK_SZX */
+
 class CoapPDU {
 
 
@@ -131,6 +136,13 @@ class CoapPDU {
 			uint8_t *optionValuePointer;
 		};
 
+		/// Structure of Block options. Returned by CoapPDU::getOptionBlock
+		struct CoapBlockOpt	{
+			uint16_t num; /**< block number */
+			uint8_t szx;  /**< block size */
+			bool m;       /**if more blocks follow */
+		};
+
 		// construction and destruction
 		CoapPDU();
 		CoapPDU(uint8_t *pdu, int pduLength);
@@ -175,6 +187,15 @@ class CoapPDU {
 
 		// content format helper
 		int setContentFormat(CoapPDU::ContentFormat format);
+
+		// block options
+		CoapBlockOpt parseOptionBlock(CoapOption* optPtr);
+		CoapBlockOpt getOptionBlock(Option optionType);
+		inline CoapBlockOpt getOptionBlock1() { return getOptionBlock(COAP_OPTION_BLOCK1); }
+		inline CoapBlockOpt getOptionBlock2() { return getOptionBlock(COAP_OPTION_BLOCK2); }
+		bool setOptionBlock(const CoapBlockOpt & blockOpt, Option optionType);
+		inline bool setOptionBlock1(const CoapBlockOpt & blockOpt) { return setOptionBlock(blockOpt, COAP_OPTION_BLOCK1); }
+		inline bool setOptionBlock2(const CoapBlockOpt & blockOpt) { return setOptionBlock(blockOpt, COAP_OPTION_BLOCK2); }
 
 		// payload
 		uint8_t* mallocPayload(int bytes);
