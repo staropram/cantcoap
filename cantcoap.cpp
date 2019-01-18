@@ -25,20 +25,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version, 2 bits
 // type, 2 bits
-	// 00 Confirmable
-	// 01 Non-confirmable
-	// 10 Acknowledgement
-	// 11 Reset
+// 00 Confirmable
+// 01 Non-confirmable
+// 10 Acknowledgement
+// 11 Reset
 
 // token length, 4 bits
 // length of token in bytes (only 0 to 8 bytes allowed)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <unistd.h>
 #include <string.h>
 #include "cantcoap.h"
-#include "arpa/inet.h"
 #include "sysdep.h"
 
 /// Memory-managed constructor. Buffer for PDU is dynamically sized and allocated by the object.

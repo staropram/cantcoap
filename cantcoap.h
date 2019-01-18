@@ -1,7 +1,6 @@
 #pragma once
 
 /// Copyright (c) 2013, Ashley Mills.
-#include <unistd.h>
 #include <stdint.h>
 #include "dbg.h"
 

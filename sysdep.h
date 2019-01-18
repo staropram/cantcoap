@@ -22,7 +22,9 @@
 #include <stdint.h>
 
 #ifndef _WIN32
-#include <arpa/inet.h>  /* __BYTE_ORDER */
+#include <arpa/inet.h> /* __BYTE_ORDER */
+#else
+#include <stdlib.h>
 #endif
 
 #if !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
