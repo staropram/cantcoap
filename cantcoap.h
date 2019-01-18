@@ -26,6 +26,11 @@
 #define COAP_MAX_BLOCK_SZX 6
 #endif /* COAP_MAX_BLOCK_SZX */
 
+#ifndef COAP_MAX_RESPONSE_CLASS
+//The largest value for the response codes class, As of draft-ietf-core-coap-04.
+#define COAP_MAX_RESPONSE_CLASS 5
+#endif /* COAP_MAX_RESPONSE_CLASS */
+
 class CoapPDU {
 
 
@@ -51,6 +56,7 @@ class CoapPDU {
 			COAP_VALID,
 			COAP_CHANGED,
 			COAP_CONTENT,
+			COAP_CONTINUE=0x5F,
 			COAP_BAD_REQUEST=0x80,
 			COAP_UNAUTHORIZED,
 			COAP_BAD_OPTION,
@@ -58,6 +64,7 @@ class CoapPDU {
 			COAP_NOT_FOUND,
 			COAP_METHOD_NOT_ALLOWED,
 			COAP_NOT_ACCEPTABLE,
+			COAP_REQUEST_ENTITY_INCOMPLETE=0x88,
 			COAP_PRECONDITION_FAILED=0x8C,
 			COAP_REQUEST_ENTITY_TOO_LARGE=0x8D,
 			COAP_UNSUPPORTED_CONTENT_FORMAT=0x8F,
@@ -169,6 +176,21 @@ class CoapPDU {
 		void setCode(CoapPDU::Code code);
 		CoapPDU::Code getCode();
 		CoapPDU::Code httpStatusToCode(int httpStatus);
+
+		/* CoAP result codes (HTTP-Code / 100 * 40 + HTTP-Code % 100) */
+
+		/* As of draft-ietf-core-coap-04, response codes are encoded to base
+		* 32, i.e.  the three upper bits determine the response class while
+		* the remaining five fine-grained information specific to that class.
+		*/
+		constexpr unsigned httpStatusToCoapUnsignedCode(unsigned httpStatus) {
+			return (httpStatus / 100 << 5) | httpStatus % 100;
+		}
+
+		/* Determines the class of response code C */
+		constexpr unsigned coapResponseClass(CoapPDU::Code code) {
+			return (code >> 5) & 0xFF;
+		}
 
 		// message ID
 		int setMessageID(uint16_t messageID);

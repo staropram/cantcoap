@@ -249,14 +249,8 @@ int CoapPDU::validate() {
 
 	// check that code is valid
 	CoapPDU::Code code = getCode();
-	if(code<COAP_EMPTY ||
-		(code>COAP_LASTMETHOD&&code<COAP_CREATED) ||
-		(code>COAP_CONTENT&&code<COAP_BAD_REQUEST) ||
-		(code>COAP_NOT_ACCEPTABLE&&code<COAP_PRECONDITION_FAILED) ||
-		(code==0x8E) ||
-		(code>COAP_UNSUPPORTED_CONTENT_FORMAT&&code<COAP_INTERNAL_SERVER_ERROR) ||
-		(code>COAP_PROXYING_NOT_SUPPORTED) ) {
-		DBG("Invalid CoAP code: %d",code);
+	if(code < COAP_EMPTY || coapResponseClass(code) > COAP_MAX_RESPONSE_CLASS) {
+		DBG("Invalid CoAP code: %d, class: %d",code,coapResponseClass(code));
 		return 0;
 	}
 	DBG("CoAP code: %d",code);
