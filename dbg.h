@@ -1,9 +1,6 @@
 #pragma once
 #include <stdio.h>
 
-#define DEBUG 1
-//#undef DEBUG
-
 #define DBG_NEWLINE "\n"
 
 #define INFO(...) printf(__VA_ARGS__); printf(DBG_NEWLINE);
