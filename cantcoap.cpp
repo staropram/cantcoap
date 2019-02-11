@@ -1356,6 +1356,10 @@ void CoapPDU::shiftPDUUp(int shiftOffset, int shiftAmount) {
 		destPointer--;
 		srcPointer--;
 	}
+	// shift the payload pointer
+	if (_payloadLength > 0) {
+		_payloadPointer += shiftOffset;
+	}
 }
 
 /// Moves a block of bytes down a specified number of steps.
@@ -1373,6 +1377,10 @@ void CoapPDU::shiftPDUDown(int startLocation, int shiftOffset, int shiftAmount) 
 		_pdu[startLocation] = _pdu[srcPointer];
 		startLocation++;
 		srcPointer++;
+	}
+	// shift the payload pointer
+	if (_payloadLength > 0) {
+		_payloadPointer -= shiftOffset;
 	}
 }
 
