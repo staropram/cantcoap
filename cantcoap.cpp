@@ -251,13 +251,9 @@ int CoapPDU::validate() {
 
 	// check that code is valid
 	CoapPDU::Code code = getCode();
-	if(code<COAP_EMPTY ||
-		(code>COAP_LASTMETHOD&&code<COAP_CREATED) ||
-		(code>COAP_CONTENT&&code<COAP_BAD_REQUEST) ||
-		(code>COAP_NOT_ACCEPTABLE&&code<COAP_PRECONDITION_FAILED) ||
-		(code==0x8E) ||
-		(code>COAP_UNSUPPORTED_CONTENT_FORMAT&&code<COAP_INTERNAL_SERVER_ERROR) ||
-		(code>COAP_PROXYING_NOT_SUPPORTED) ) {
+	uint8_t cclass=((unsigned)code)>>5;
+	
+	if(code<COAP_EMPTY || cclass>5) {
 		DBG("Invalid CoAP code: %d",code);
 		return 0;
 	}
