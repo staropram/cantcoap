@@ -1163,6 +1163,8 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 			return NULL;
 		}
 		_pdu = newPDU;
+		// adjust payload pointer because realloc might have relocated PDU
+		_payloadPointer = &_pdu[_pduLength+1];
 		_bufferLength = newLen;
 	} else {
 		// constructed from buffer, check space
