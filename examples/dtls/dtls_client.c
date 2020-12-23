@@ -20,7 +20,8 @@
 #include <event2/event.h>
 
 // tinydtls
-#include "tinydtls/config.h"
+#include "dtls_example.h"
+#include "tinydtls/dtls_config.h"
 extern "C" {
 #include "tinydtls/dtls.h"
 #include "tinydtls/debug.h"
@@ -35,6 +36,7 @@ extern "C" {
 #define DEFAULT_PORT 20220
 
 static dtls_context_t *dtls_context = NULL;
+
 
 // TODO add an example that uses this ecdsa stuff
 // just ignore all ecdsa references for now
@@ -139,9 +141,10 @@ void libevent_recvfrom_callback(evutil_socket_t sockfd, short event, void *arg) 
 int tinydtls_getpsk_callback(
 	struct dtls_context_t *ctx,
 	const session_t *session,
+	dtls_credentials_type_t type,
 	const unsigned char *id,
 	size_t id_len,
-	const dtls_psk_key_t **result) {
+	unsigned char *result, size_t result_length) {
 
 	DBG("Been asked to get PSK for %s",id);
 
@@ -153,19 +156,27 @@ int tinydtls_getpsk_callback(
 		.key_length = 9
 	};
 
-
-	// when id is null, tinydtls wants our identity to use in the handshake
-	// this won't happen for the client because nobody should connect to us (maybe return NULL? XXX)
-	if(id==NULL) {
-		// this is the self identity
-		*result = &client_psk;
-		return 0;
-	}
-
-	// chose the correct key based on the server's identity
+/*
 	if(strcmp((char*)id,"Server_identity")==0) {
 		*result = &client_psk;
 	}
+	*/
+	switch(type) {
+		case DTLS_PSK_IDENTITY:
+			memcpy(result,client_psk.id,client_psk.id_length);
+			return client_psk.id_length;
+
+		case DTLS_PSK_KEY:
+			memcpy(result,client_psk.key,client_psk.key_length);
+			return client_psk.key_length;
+
+		default:
+			return 0;
+		break;
+
+
+	}
+
 
 	// TODO, cause handshake to fail if server key identity cannot be found
 	// use a hash table to store the identities, or maybe an external entity, perhaps even LDAP
@@ -245,7 +256,7 @@ static dtls_handler_t cb = {
   .write = tinydtls_send_callback,
   .read  = tinydtls_read_callback,
   .event = tinydtls_event_callback,
-  .get_psk_key = tinydtls_getpsk_callback,
+  .get_psk_info = tinydtls_getpsk_callback,
   .get_ecdsa_key = NULL,
   .verify_ecdsa_key = NULL 
 };
@@ -342,12 +353,12 @@ int main(int argc, char **argv) {
 
 	// dtls stuff
 	dtls_init();
-	dtls_set_log_level(LOG_WARN);
+	dtls_set_log_level(DTLS_LOG_WARN);
 
 
 	dtls_context = dtls_new_context(&listener_fd);
 	if(!dtls_context) {
-		dsrv_log(LOG_EMERG, "cannot create context\n");
+		dsrv_log(DTLS_LOG_EMERG, "cannot create context\n");
 		exit(-1);
 	}
 

@@ -1,8 +1,9 @@
-LIB_EXTERNAL=-L/usr/local/lib/event2 -L$(HOME)/lib
-INCLUDE_EXTERNAL=-I/usr/local/include/event2 -I/$(HOME)/include
+# note I assume tinydtls is installed in $(HOME)/local
+LIB_EXTERNAL=-L/usr/local/lib/event2 -L$(HOME)/local/lib
+INCLUDE_EXTERNAL=-I/usr/local/include/event2 -I/$(HOME)/local/include
 
 LIBS=$(LIB_EXTERNAL) -levent -ltinydtls
-CFLAGS=-Wall -g -Wincompatible-pointer-types-discards-qualifiers
+CFLAGS=-Wall -g -Wincompatible-pointer-types-discards-qualifiers -Wno-error=incompatible-pointer-types
 INCLUDE=$(INCLUDE_EXTERNAL) -I./include  -L./
 CXX=clang++
 default: dtls_server dtls_client

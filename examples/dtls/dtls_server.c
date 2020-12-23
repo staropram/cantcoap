@@ -20,7 +20,8 @@
 #include <event2/event.h>
 
 // tinydtls
-#include "tinydtls/config.h"
+#include "dtls_example.h"
+#include "tinydtls/dtls_config.h"
 extern "C" {
 #include "tinydtls/dtls.h"
 #include "tinydtls/debug.h"
@@ -50,14 +51,20 @@ dtls_context_t *g_dtls_context = NULL;
  * 2. We are a client conneting to a server, the client has identified itself with an ID
  *    and we need to tell tinydtls which key to use with this peer.
  */
+
 int tinydtls_getpsk_callback(
 	struct dtls_context_t *ctx,
 	const session_t *session,
+	dtls_credentials_type_t type,
 	const unsigned char *id,
 	size_t id_len,
-	const dtls_psk_key_t **result) {
+	unsigned char *result, size_t result_length) {
 
 	DBG("Been asked to get PSK for %s",id);
+
+	if(type!=DTLS_PSK_KEY) {
+		return 0;
+	}
 
 	// it is the job of the server to choose the correct PSK for the provided client id, in this example we have
 	// only one possible client identity, here is its key
@@ -77,22 +84,18 @@ int tinydtls_getpsk_callback(
 		.key_length = 0
 	};
 
-	// when id is null, tinydtls wants our identity to use in the handshake
-	// this happens when a client connects
-	if(id==NULL) {
-		// return self identity
-		*result = &server_psk;
-		return 0;
-	}
-
 	// otherwise chose the correct key based on the client's identity
+	/*
 	if(strcmp((char*)id,"Client_identity")==0) {
-		*result = &client_psk;
+		result = (unsigned char *)&client_psk;
 	}
+	*/
+
+	memcpy(result,client_psk.key,client_psk.key_length);
+	return client_psk.key_length;
 
 	// TODO, cause handshake to fail if server key identity cannot be found
 	// use a hash table to store the identities, or maybe an external entity, perhaps even LDAP
-	return 0;
 }
 
 // this is called by tinydtls after the DTLS handshake is finished, every
@@ -275,7 +278,7 @@ int main(int argc, char **argv) {
 
 	// DTLS stuff
 	dtls_init();
-	dtls_set_log_level(LOG_WARN);
+	dtls_set_log_level(DTLS_LOG_WARN);
 	g_dtls_context = dtls_new_context(&listener);
 
 	// setup callback handlers for DTLS
@@ -283,7 +286,7 @@ int main(int argc, char **argv) {
 	  .write = tinydtls_send_callback, 				// called when tinydtls needs to send data
 	  .read  = tinydtls_read_callback, 				// called when tinydtls has plaintext data
 	  .event = tinydtls_event_callback,				// called when either connection setup or close occurs
-	  .get_psk_key = tinydtls_getpsk_callback, 	// called to return the correct PSK for a given peer
+	  .get_psk_info = tinydtls_getpsk_callback, 	// called to return the correct PSK for a given peer
 	  .get_ecdsa_key = NULL,							// called in the case that an ECDSA key is used to get it
 	  .verify_ecdsa_key = NULL							// called to verify an ECDSA key
 	};
