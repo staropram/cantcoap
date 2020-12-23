@@ -1162,13 +1162,19 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 			DBG("Cannot allocate (or shrink) space for payload");
 			return NULL;
 		}
-		_pdu = newPDU;
-		// adjust payload pointer because realloc might have relocated PDU
-		_payloadPointer = &_pdu[_pduLength+1];
-		// and also set the payload marker if it wasn't already set
-		if(markerSpace!=0) {
-			_pdu[_pduLength] = 0xFF;
+
+		// in the case of a realloc a few things are done differently to
+		// a new allocation
+		if(_pdu!=newPDU) {
+			// adjust payload pointer to point into the new memory
+			_payloadPointer = &_pdu[_pduLength+1];
+			// and also set the payload marker if it wasn't already set
+			if(markerSpace!=0) {
+				_pdu[_pduLength] = 0xFF;
+			}
 		}
+
+		_pdu = newPDU;
 		_bufferLength = newLen;
 	} else {
 		// constructed from buffer, check space
