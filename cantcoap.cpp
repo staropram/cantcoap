@@ -1165,7 +1165,10 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 
 		// in the case of a realloc a few things are done differently to
 		// a new allocation
+		_bufferLength = newLen;
 		if(_pdu!=newPDU) {
+			_pdu = newPDU;
+			DBG("This is a new allocation");
 			// adjust payload pointer to point into the new memory
 			_payloadPointer = &_pdu[_pduLength+1];
 			// and also set the payload marker if it wasn't already set
@@ -1174,8 +1177,6 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 			}
 		}
 
-		_pdu = newPDU;
-		_bufferLength = newLen;
 	} else {
 		// constructed from buffer, check space
 		DBG("newLen: %d, _bufferLength: %d",newLen,_bufferLength);
@@ -1228,6 +1229,7 @@ int CoapPDU::setPayload(uint8_t *payload, int len) {
 	}
 
 	// copy payload contents
+	DBG("Copying payload to new memory");
 	memcpy(payloadPointer,payload,len);
 
 	return 0;

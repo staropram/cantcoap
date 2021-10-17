@@ -545,7 +545,45 @@ void testURISizes()
     delete pdu;
 }
 
+void testBigRealloc() {
+	// big payload
+	size_t testPayloadLen = 1000000;
+	uint8_t *testPayload = (uint8_t*)malloc(testPayloadLen*sizeof(uint8_t));
+	for(int i=0; i<testPayloadLen; i++) {
+		testPayload[i] = i%255;
+	}
+
+	CoapPDU *pdu = new CoapPDU();
+	pdu->setCode(CoapPDU::COAP_GET);
+	pdu->setVersion(1);
+	pdu->setMessageID(0x1234);
+	#ifdef DEBUG
+	pdu->printBin();
+	#endif
+	pdu->setPayload(testPayload,testPayloadLen);
+
+	// check that the new payload matches
+	uint8_t* payloadPointer = pdu->getPayloadPointer();
+	for(int i=0; i<testPayloadLen; i++) {
+		CU_ASSERT_EQUAL_FATAL(payloadPointer[i],(i%255));
+	}
+	DBG("Trying to reduce payload size");
+	pdu->setPayload((uint8_t*)"\1\2",2);
+	#ifdef DEBUG
+	pdu->printBin();
+	#endif
+	CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),2);
+	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2",pdu->getPayloadLength());
+
+	free(testPayload);
+	delete pdu;
+}
+
 int main(int argc, char **argv) {
+	#define DEBUG
+	//testBigRealloc();
+	//return 0;
+
 	(void)argc;
 	(void)argv;
 	// use CUnit test framework
@@ -599,6 +637,12 @@ int main(int argc, char **argv) {
    }
 
 	CU_pTest payloadTest = CU_add_test(pSuite, "Payload setting", testPayload);
+   if(!payloadTest) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
+	CU_pTest bigReallocTest = CU_add_test(pSuite, "Big realloc", testBigRealloc);
    if(!payloadTest) {
       CU_cleanup_registry();
       return CU_get_error();
