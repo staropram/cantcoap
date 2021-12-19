@@ -1124,7 +1124,7 @@ int CoapPDU::addOption(uint16_t insertedOptionNumber, uint16_t optionValueLength
  * \return Either a pointer to the payload buffer, or NULL if there wasn't enough space / allocation failed.
  */
 uint8_t* CoapPDU::mallocPayload(int len) {
-	DBG("Entering mallocPayload");
+	DBG("Entering mallocPayload with len %d",len);
 	// sanity checks
 	if(len==0) {
 		DBG("Cannot allocate a zero length payload");
@@ -1152,10 +1152,12 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 		markerSpace = 0;
 		// compute new payload length (can be negative if shrinking payload)
 		payloadSpace = len-_payloadLength;
+		DBG("New payload space(%d): len(%d)-_payloadLength(%d)",payloadSpace,len,_payloadLength);
 	}
 
 	// make space for payload (and payload marker if necessary)
 	int newLen = _pduLength+payloadSpace+markerSpace;
+	DBG("Allocating %d bytes:  _pduLength(%d), payloadSpace(%d), markerSpace(%d)",newLen,_pduLength,payloadSpace,markerSpace);
 	if(!_constructedFromBuffer) {
 		uint8_t* newPDU = (uint8_t*)realloc(_pdu,newLen);
 		if(newPDU==NULL) {
@@ -1170,10 +1172,10 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 			_pdu = newPDU;
 			DBG("This is a new allocation");
 			// adjust payload pointer to point into the new memory
-			_payloadPointer = &_pdu[_pduLength+1];
+			_payloadPointer = &_pdu[newLen-len];
 			// and also set the payload marker if it wasn't already set
 			if(markerSpace!=0) {
-				_pdu[_pduLength] = 0xFF;
+				_pdu[newLen-len-1] = 0xFF;
 			}
 		}
 
@@ -1186,20 +1188,19 @@ uint8_t* CoapPDU::mallocPayload(int len) {
 		}
 	}
 
+	_pduLength = newLen;
+	_payloadLength = len;
+
 	// deal with fresh allocation case separately
 	if(_payloadPointer==NULL) {
-		// set payload marker
-		_pdu[_pduLength] = 0xFF;
+		DBG("Fresh allocation");
 		// payload at end of old PDU
-		_payloadPointer = &_pdu[_pduLength+1];
-		_pduLength = newLen;
-		_payloadLength = len;
+		_payloadPointer = &_pdu[newLen-len];
+		// set payload marker
+		_pdu[newLen-len-1] = 0xFF;
 		return _payloadPointer;
 	}
 
-	// otherwise, just adjust length of PDU
-	_pduLength = newLen;
-	_payloadLength = len;
 	DBG("Leaving mallocPayload");
 	return _payloadPointer;
 }
@@ -1785,7 +1786,7 @@ void CoapPDU::printHuman() {
 			if((c>='!'&&c<='~')||c==' ') {
 				INFOX("%c",c);
 			} else {
-				INFOX("\\%.2x",c);
+				INFOX("\\%.2x",(uint8_t)c);
 			}
 		}
 		INFO("\"");

@@ -461,23 +461,24 @@ void testPayload() {
 		}
 		pdu->setType(CoapPDU::COAP_CONFIRMABLE);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
 		#endif
 		pdu->setCode(CoapPDU::COAP_GET);
 		pdu->setVersion(1);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
 		#endif
 		pdu->setMessageID(0x1234);
 		pdu->setURI((char*)"test",4);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
 		#endif
 		CU_ASSERT_FATAL(pdu->setPayload(NULL,4)==1);
 		CU_ASSERT_FATAL(pdu->setPayload((uint8_t*)"test",0)==1);
 		pdu->setPayload((uint8_t*)"\1\2\3",3);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
+		pdu->printHex();
 		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),3);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUA,pdu->getPDULength());
@@ -485,15 +486,16 @@ void testPayload() {
 		DBG("Trying to increase payload size");
 		pdu->setPayload((uint8_t*)"\4\3\2\1",4);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
 		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),4);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUB,pdu->getPDULength());
+
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\4\3\2\1",pdu->getPayloadLength());
 		DBG("Trying to reduce payload size");
 		pdu->setPayload((uint8_t*)"\1\2",2);
 		#ifdef DEBUG
-		pdu->printBin();
+		//pdu->printBin();
 		#endif
 		CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),2);
 		CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPDUPointer(),payloadTestPDUC,pdu->getPDULength());
@@ -558,7 +560,7 @@ void testBigRealloc() {
 	pdu->setVersion(1);
 	pdu->setMessageID(0x1234);
 	#ifdef DEBUG
-	pdu->printBin();
+	//pdu->printBin();
 	#endif
 	pdu->setPayload(testPayload,testPayloadLen);
 
@@ -570,7 +572,7 @@ void testBigRealloc() {
 	DBG("Trying to reduce payload size");
 	pdu->setPayload((uint8_t*)"\1\2",2);
 	#ifdef DEBUG
-	pdu->printBin();
+	//pdu->printBin();
 	#endif
 	CU_ASSERT_EQUAL_FATAL(pdu->getPayloadLength(),2);
 	CU_ASSERT_NSTRING_EQUAL_FATAL(pdu->getPayloadPointer(),"\1\2",pdu->getPayloadLength());
