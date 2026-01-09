@@ -103,7 +103,7 @@ class CoapPDU {
 			COAP_CONTENT_FORMAT_IMAGE_PNG               = 23   ,  //  image/png                                    /* Ref: [PNG] */
 			COAP_CONTENT_FORMAT_APP_LINKFORMAT          = 40   ,  //  application/link-format                      /* Ref: [RFC6690] */
 			COAP_CONTENT_FORMAT_APP_XML                 = 41   ,  //  application/xml                              /* Ref: [RFC3023] */
-			COAP_CONTENT_FORMAT_APP_OCTECT_STREAM       = 42   ,  //  application/octet-stream                     /* Ref: [RFC2045][RFC2046] */
+			COAP_CONTENT_FORMAT_APP_OCTET_STREAM        = 42   ,  //  application/octet-stream                     /* Ref: [RFC2045][RFC2046] */
 			COAP_CONTENT_FORMAT_APP_EXI                 = 47   ,  //  application/exi                              /* Ref: [EXI Format 1.0 (Second Edition)] */
 			COAP_CONTENT_FORMAT_APP_JSON                = 50   ,  //  application/json                             /* Ref: [RFC8259] */
 			COAP_CONTENT_FORMAT_APP_JSON_PATCH_JSON     = 51   ,  //  application/json-patch+json                  /* Ref: [RFC6902] */
